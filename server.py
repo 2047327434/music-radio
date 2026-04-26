@@ -45,8 +45,8 @@ COVER_DIR = BASE_DIR / "uploads" / "covers"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 COVER_DIR.mkdir(parents=True, exist_ok=True)
 
-# Navidrome 本地音乐目录（只读浏览，不删除此目录下任何内容）
-NAVIDROME_MUSIC_DIR = Path("/data/music")  # ⚠️ 请修改为你的本地音乐目录
+# 本地音乐目录（只读浏览，不删除此目录下任何内容）
+LOCAL_MUSIC_DIR = Path("/data/music")  # ⚠️ 请修改为你的本地音乐目录
 
 app.mount("/uploads", StaticFiles(directory=BASE_DIR / "uploads"), name="uploads")
 
@@ -1330,13 +1330,13 @@ async def manual_cleanup():
     return {"success": True, "removed_music": removed_music, "removed_covers": removed_covers, "removed_tracks": removed_track_count, "kept_tracks": len(kept_tracks), "freed_mb": round(removed_size / 1024 / 1024, 1)}
 
 
-# ============ Local Music Browse API (Navidrome, read-only) ============
+# ============ Local Music Browse API (read-only) ============
 def _safe_local_path(rel_path: str) -> Path:
     """安全解析本地音乐路径，防止路径遍历攻击"""
-    if not NAVIDROME_MUSIC_DIR.exists():
+    if not LOCAL_MUSIC_DIR.exists():
         raise HTTPException(503, "本地音乐目录未配置")
-    target = (NAVIDROME_MUSIC_DIR / rel_path).resolve() if rel_path else NAVIDROME_MUSIC_DIR.resolve()
-    base = NAVIDROME_MUSIC_DIR.resolve()
+    target = (LOCAL_MUSIC_DIR / rel_path).resolve() if rel_path else LOCAL_MUSIC_DIR.resolve()
+    base = LOCAL_MUSIC_DIR.resolve()
     if not str(target).startswith(str(base)):
         raise HTTPException(403, "无权访问此路径")
     return target
@@ -1355,12 +1355,12 @@ async def browse_local_music(path: str = ""):
         for item in sorted(target.iterdir()):
             try:
                 if item.is_dir():
-                    rel = str(item.relative_to(NAVIDROME_MUSIC_DIR))
+                    rel = str(item.relative_to(LOCAL_MUSIC_DIR))
                     # 计算目录下音频文件数量
                     audio_count = sum(1 for f in item.iterdir() if f.is_file() and f.suffix.lower() in AUDIO_EXTS)
                     dirs.append({"name": item.name, "path": rel, "count": audio_count})
                 elif item.is_file() and item.suffix.lower() in AUDIO_EXTS:
-                    rel = str(item.relative_to(NAVIDROME_MUSIC_DIR))
+                    rel = str(item.relative_to(LOCAL_MUSIC_DIR))
                     size = item.stat().st_size
                     files.append({"name": item.name, "path": rel, "size": size})
             except PermissionError:
@@ -1368,7 +1368,7 @@ async def browse_local_music(path: str = ""):
     except PermissionError:
         raise HTTPException(403, "无权访问此目录")
     
-    return {"dirs": dirs, "files": files, "current_path": path, "base_name": NAVIDROME_MUSIC_DIR.name}
+    return {"dirs": dirs, "files": files, "current_path": path, "base_name": LOCAL_MUSIC_DIR.name}
 
 
 @app.get("/api/local-music/stream/{file_path:path}")

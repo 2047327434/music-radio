@@ -10,7 +10,7 @@
 
 ## ✨ 特性
 
-- 🎵 **三种曲目来源** — 上传文件 / URL 添加 / 本地音乐库（Navidrome）
+- 🎵 **三种曲目来源** — 上传文件 / URL 添加 / 本地音乐目录浏览
 - 📡 **WebSocket 实时同步** — 听众端自动跟随 DJ 播放，零延迟切换
 - 🔄 **服务端驱动循环播放** — 歌曲播完自动切下一首，DJ 关页面也不停
 - 📊 **边下边播** — HTTP Range 请求流式传输，支持 seek
@@ -78,10 +78,10 @@ ADMIN_PASSWORD_HASH = _hash_pwd("your_password")
 
 ### 本地音乐目录
 
-修改 `server.py` 中的 `NAVIDROME_MUSIC_DIR`：
+修改 `server.py` 中的 `LOCAL_MUSIC_DIR`：
 
 ```python
-NAVIDROME_MUSIC_DIR = Path("/path/to/your/music")
+LOCAL_MUSIC_DIR = Path("/path/to/your/music")
 ```
 
 ## 🌐 部署

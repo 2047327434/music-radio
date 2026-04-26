@@ -489,7 +489,7 @@ Accept-Ranges: bytes
 
 ## 本地音乐
 
-浏览和添加服务器本地目录中的音乐文件（如 Navidrome 音乐库）。
+浏览和添加服务器本地目录中的音乐文件（只读，不泄露服务器绝对路径）。
 
 ### 浏览目录
 
@@ -501,18 +501,18 @@ GET /api/local-music/browse?path=/path/to/dir
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `path` | string | ❌ | 浏览的目录路径（默认根目录） |
+| `path` | string | ❌ | 相对子目录路径（默认浏览根目录） |
 
 **响应：**
 
 ```json
 {
-  "current_path": "/data/music",
+  "current_path": "",
   "directories": ["Album1", "Album2"],
   "files": [
     {
       "name": "song.mp3",
-      "path": "/data/music/song.mp3",
+      "path": "Album1/song.mp3",
       "size": 5242880
     }
   ]
