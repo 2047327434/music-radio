@@ -5,6 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green?logo=fastapi)
 ![WebSocket](https://img.shields.io/badge/WebSocket-Realtime-orange)
+[![Demo](https://img.shields.io/badge/Demo-fm.yuhanghome.icu-brightgreen?style=flat)](https://fm.yuhanghome.icu/)
 
 ---
 
@@ -26,7 +27,9 @@
 
 | 听众播放页 | DJ 控制台 |
 |:---:|:---:|
-| 🎧 Player | 🎛️ Admin |
+| ![Player](screenshots/player.png) | ![Admin](screenshots/admin.png) |
+
+> 🎧 **在线体验**：[https://fm.yuhanghome.icu/](https://fm.yuhanghome.icu/)
 
 ## 🚀 快速开始
 
