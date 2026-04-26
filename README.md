@@ -1,5 +1,7 @@
 # 🎧 Music Radio Station
 
+[![中文](https://img.shields.io/badge/语言-中文-blue)](./README.md) [![English](https://img.shields.io/badge/Language-English-lightgrey)](./README_en.md)
+
 > 自建实时音乐电台系统 — FastAPI + WebSocket，支持 DJ 控制台 + 听众同步收听
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python)
