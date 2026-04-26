@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+
+# Runtime data
+auth.json
+*.log
+
+# Uploads (runtime generated)
+uploads/music/*
+uploads/covers/*
+!uploads/music/.gitkeep
+!uploads/covers/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Deploy scripts (local only)
+_stderr_*
+fix_encoding.py
+FIX_ON_SERVER.sh
+run_test.py
+test_api.py
+test_streaming.py
+DEPLOY_FIX_GUIDE.md

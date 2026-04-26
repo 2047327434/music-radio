@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Radio · 直播间</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#F2F2F7;--surface:#FFFFFF;--surface2:#F9F9FB;--surface3:#F0F0F5;
+  --border:#E5E5EA;--text:#1C1C1E;--text-dim:#8E8E93;
+  --accent:#FA2D48;--accent-light:#FF6B81;--accent-dark:#D4233C;
+  --green:#34C759;--glow:rgba(250,45,72,.25);--glow2:rgba(250,45,72,.12);
+  --shadow:0 2px 16px rgba(0,0,0,.06);--shadow-lg:0 8px 32px rgba(0,0,0,.08);
+}
+body{font-family:-apple-system,'SF Pro Display','SF Pro Text',Segoe UI,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+.container{max-width:100%;margin:0 auto;padding:12px}
+
+/* ===== Header — Apple Music style ===== */
+.header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:14px;background:var(--surface);box-shadow:var(--shadow);margin-bottom:12px;gap:8px;flex-shrink:0}
+.header-left{display:flex;align-items:center;gap:6px;min-width:0;flex-shrink:1}
+.header h1{font-size:16px;font-weight:700;letter-spacing:-.3px;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.header h1 .accent{color:var(--accent)}
+.status{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-dim);font-weight:500;white-space:nowrap}
+.header-user{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.header-user .inp{padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:11px;outline:none;width:80px;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
+.header-user .inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow2)}
+.header-user .btn{padding:5px 10px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .2s}
+.header-user .btn:hover{background:var(--accent-dark);box-shadow:0 2px 12px var(--glow)}
+.header-user .btn:active{transform:scale(.97)}
+.dot{width:7px;height:7px;border-radius:50%;background:#C7C7CC;flex-shrink:0}
+.dot.live{background:var(--green);box-shadow:0 0 8px rgba(52,199,89,.5);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ===== Now Playing — Apple Music Card ===== */
+.np-card{
+  background:var(--surface);border-radius:20px;
+  padding:0;margin-bottom:14px;overflow:hidden;position:relative;
+  box-shadow:var(--shadow-lg);
+}
+/* Live banner */
+.live-banner{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 20px;background:var(--surface2);border-bottom:1px solid var(--border);
+}
+.live-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+  color:var(--accent);
+}
+.live-badge .red-dot{
+  width:7px;height:7px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 8px var(--glow);animation:pulse 1.5s infinite;
+}
+.live-badge.off{color:var(--text-dim)}
+.live-badge.off .red-dot{background:#C7C7CC;box-shadow:none;animation:none}
+.listener-count{font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:4px;font-weight:500}
+
+/* Cover + info area */
+.np-body{padding:16px 14px 14px;display:flex;flex-direction:column;align-items:center}
+
+.np-cover{
+  width:120px;height:120px;border-radius:12px;
+  background:linear-gradient(145deg,#FFE8EC,#FFF0F3);
+  margin-bottom:12px;display:flex;align-items:center;justify-content:center;
+  font-size:40px;overflow:hidden;position:relative;
+  box-shadow:0 8px 32px rgba(250,45,72,.15),0 2px 8px rgba(0,0,0,.06);
+  transition:box-shadow .6s;
+}
+.np-card.is-playing .np-cover{
+  box-shadow:0 12px 48px rgba(250,45,72,.22),0 4px 16px rgba(0,0,0,.08);
+}
+.np-cover img{width:100%;height:100%;object-fit:cover;border-radius:16px}
+
+/* Ambient glow */
+.np-glow{
+  position:absolute;top:-60px;left:50%;transform:translateX(-50%);
+  width:280px;height:280px;border-radius:50%;
+  background:radial-gradient(circle,rgba(250,45,72,.08) 0%,transparent 70%);
+  pointer-events:none;opacity:0;transition:opacity .8s;
+}
+.np-card.is-playing .np-glow{opacity:1}
+
+.np-title{font-size:16px;font-weight:700;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;letter-spacing:-.3px;margin-bottom:2px;color:var(--text)}
+.np-artist{font-size:12px;color:var(--text-dim);text-align:center;margin-bottom:12px;font-weight:500}
+
+/* Progress — Apple Music style */
+.np-progress-wrap{width:100%;padding:0 2px}
+.np-progress{
+  width:100%;height:5px;background:rgba(0,0,0,.08);
+  border-radius:2.5px;overflow:visible;cursor:pointer;position:relative;
+  margin-bottom:6px;
+}
+.np-progress::after{content:'';position:absolute;top:-12px;left:0;right:0;bottom:-12px}
+.np-buffer{position:absolute;top:0;left:0;height:100%;background:rgba(0,0,0,.06);width:0%;border-radius:2.5px;transition:width .3s ease;z-index:1}
+.np-fill{
+  position:absolute;top:0;left:0;height:100%;
+  background:var(--accent);
+  width:0%;border-radius:2.5px;transition:width .5s linear;z-index:2;
+}
+.np-fill::after{
+  content:'';position:absolute;right:-6px;top:50%;transform:translateY(-50%);
+  width:14px;height:14px;border-radius:50%;
+  background:var(--accent);box-shadow:0 2px 8px var(--glow);
+  opacity:0;transition:opacity .15s;
+}
+.np-progress:hover .np-fill::after{opacity:1}
+.np-progress:hover{height:7px;margin-top:-1px;margin-bottom:7px}
+.np-time{display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:12px;padding:0 2px;font-weight:500;font-variant-numeric:tabular-nums}
+
+/* ===== Play button — Apple Music style ===== */
+.play-main{
+  width:50px;height:50px;border-radius:50%;border:none;
+  background:var(--accent);
+  color:#fff;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 20px var(--glow),0 2px 8px rgba(0,0,0,.1);
+  transition:all .2s cubic-bezier(.4,0,.2,1);
+}
+.play-main:hover{transform:scale(1.06);box-shadow:0 6px 28px var(--glow),0 2px 12px rgba(0,0,0,.12)}
+.play-main:active{transform:scale(.95);background:var(--accent-dark)}
+.play-main.idle{
+  background:var(--surface2);
+  box-shadow:0 2px 10px rgba(0,0,0,.06),inset 0 0 0 1.5px var(--border);
+}
+.play-main.idle:hover{box-shadow:0 2px 14px var(--glow);color:var(--accent)}
+.play-main svg{width:24px;height:24px;fill:currentColor}
+.pause-bars{display:flex;gap:3px;align-items:center;height:20px}
+.pause-bars span{width:4.5px;height:18px;border-radius:2px;background:#fff}
+
+/* Status text */
+.np-status{margin-top:10px;font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:5px;min-height:16px;font-weight:500}
+.np-status .s-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0;animation:pulse 1.5s infinite}
+.np-status .s-dot.off{background:#C7C7CC;animation:none}
+
+/* ===== Tab Switcher ===== */
+.tab-bar{display:flex;border-bottom:1px solid var(--border);background:var(--surface2)}
+.tab-btn{flex:1;padding:10px 0;text-align:center;font-size:12px;font-weight:600;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* ===== Lyrics Panel ===== */
+.lyrics-panel{height:300px;overflow-y:auto;padding:16px 20px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+.lyrics-panel::-webkit-scrollbar{width:3px}
+.lyrics-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.lrc-line{padding:8px 0;font-size:15px;color:var(--text-dim);line-height:1.8;transition:all .35s ease;font-weight:400;text-align:center}
+.lrc-line.active{color:var(--text);font-size:17px;font-weight:700;transform:scale(1.04)}
+.lrc-line.passed{color:var(--text-dim);opacity:.5}
+.no-lyrics{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);text-align:center;padding:40px 20px}
+.no-lyrics-icon{font-size:42px;margin-bottom:12px;opacity:.4}
+.no-lyrics-text{font-size:14px;font-weight:500}
+.no-lyrics-sub{font-size:12px;margin-top:6px;opacity:.6}
+
+/* ===== Song Info ===== */
+.song-info{padding:16px 20px;border-top:1px solid var(--border);background:var(--surface2)}
+.song-info-row{display:flex;align-items:center;padding:6px 0;font-size:13px}
+.song-info-label{color:var(--text-dim);font-weight:600;min-width:52px;flex-shrink:0}
+.song-info-value{color:var(--text);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ===== Chat — Apple style ===== */
+.chat-card{background:var(--surface);border-radius:14px;display:flex;flex-direction:column;flex:1;min-height:200px;max-height:280px;box-shadow:var(--shadow)}
+.chat-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.chat-header h2{font-size:14px;font-weight:700}
+.online-count{font-size:11px;color:var(--text-dim);background:var(--surface3);padding:3px 10px;border-radius:8px;margin-left:auto;font-weight:600}
+
+.chat-messages{flex:1;overflow-y:auto;padding:10px;background:var(--surface2)}
+.chat-messages::-webkit-scrollbar{width:3px}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+.msg{margin-bottom:10px;display:flex;gap:8px;align-items:flex-start}
+.msg-avatar{width:28px;height:28px;border-radius:50%;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.msg-content{flex:1;min-width:0}
+.msg-header{display:flex;align-items:center;gap:5px;margin-bottom:2px}
+.msg-name{font-size:12px;font-weight:600}
+.msg-role{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700}
+.msg-role.admin{background:var(--accent);color:#fff}
+.msg-role.user{background:var(--surface3);color:var(--text-dim)}
+.msg-time{font-size:10px;color:var(--text-dim);margin-left:auto;font-weight:500}
+.msg-text{font-size:13px;line-height:1.5;color:var(--text);word-break:break-word}
+.msg.system{font-size:12px;color:var(--text-dim);text-align:center;padding:6px;font-weight:500}
+
+.chat-input-area{padding:10px;border-top:1px solid var(--border);background:var(--surface)}
+.chat-form{display:flex;gap:8px}
+.chat-inp{flex:1;padding:9px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;outline:none;min-width:0;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
+.chat-inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow2)}
+.chat-send{padding:9px 16px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.chat-send:hover{background:var(--accent-dark)}
+.chat-send:active{transform:scale(.97)}
+
+/* ===== Toast — Apple style ===== */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--text);color:var(--surface);padding:12px 24px;border-radius:12px;font-size:13px;z-index:100000;opacity:0;transition:all .3s;pointer-events:none;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ===== Touch responsiveness ===== */
+.play-main,.chat-send,.header-user .btn,.tab-btn,.dz-label{touch-action:manipulation}
+
+/* ===== Kicked Overlay ===== */
+.kicked-overlay{
+  position:fixed;inset:0;z-index:999999;
+  background:rgba(0,0,0,.92);
+  backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  color:#fff;text-align:center;padding:40px;
+  animation:kickedFadeIn .5s ease;
+}
+.kicked-overlay.show{display:flex}
+@keyframes kickedFadeIn{from{opacity:0}to{opacity:1}}
+.kicked-icon{font-size:64px;margin-bottom:20px;opacity:.8}
+.kicked-title{font-size:28px;font-weight:700;margin-bottom:8px;letter-spacing:-.5px;color:var(--accent)}
+.kicked-reason{font-size:16px;color:rgba(255,255,255,.6);margin-bottom:30px;font-weight:500;max-width:300px;line-height:1.5}
+.kicked-sub{font-size:13px;color:rgba(255,255,255,.35);font-weight:500}
+
+/* ===== Responsive: Medium phones (361-599px) ===== */
+@media(min-width:361px) and (max-width:599px){
+  .np-cover{width:130px;height:130px;font-size:44px}
+  .np-body{padding:18px 14px 14px}
+  .chat-card{max-height:300px}
+  .lyrics-panel{height:260px}
+  .play-main{width:54px;height:54px}
+  .np-title{font-size:17px}
+  .np-artist{font-size:13px;margin-bottom:14px}
+}
+
+/* ===== Responsive: Small phones (<=360px) ===== */
+@media(max-width:360px){
+  .container{padding:8px}
+  .header{padding:6px 10px;gap:4px}
+  .header h1{font-size:14px}
+  .status{font-size:10px}
+  .header-user .inp{width:64px;font-size:10px;padding:4px 6px}
+  .header-user .btn{padding:4px 8px;font-size:10px}
+  .np-cover{width:96px;height:96px;font-size:32px;border-radius:10px}
+  .np-title{font-size:14px}
+  .np-artist{font-size:11px;margin-bottom:8px}
+  .play-main{width:44px;height:44px}
+  .play-main svg{width:18px;height:18px}
+  .chat-card{max-height:220px;min-height:160px}
+  .np-body{padding:12px 10px 10px}
+  .np-time{margin-bottom:8px}
+  .lyrics-panel{height:220px}
+  .live-banner{padding:8px 12px}
+  .np-progress{margin-bottom:4px}
+}
+
+/* ===== Responsive: Tablets (>=600px) ===== */
+@media(min-width:600px){
+  .container{max-width:560px;padding:20px}
+  .np-cover{width:160px;height:160px;font-size:52px}
+  .np-title{font-size:19px}
+  .np-artist{font-size:14px;margin-bottom:16px}
+  .play-main{width:60px;height:60px}
+  .chat-card{max-height:none;height:380px}
+  .lyrics-panel{height:400px}
+  .np-body{padding:20px 18px 18px}
+}
+
+/* ===== Responsive: Desktop (>=900px) ===== */
+@media(min-width:900px){
+  .container{max-width:860px}
+  .main-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  .left-col{position:sticky;top:16px}
+  .chat-card{max-height:none;height:calc(100vh - 50px);min-height:460px}
+  .np-cover{width:180px;height:180px;font-size:56px}
+  .np-title{font-size:20px}
+  .np-artist{font-size:14px;margin-bottom:16px}
+  .np-body{padding:20px 18px 18px}
+  .play-main{width:64px;height:64px}
+  .lyrics-panel{height:440px}
+}
+
+/* ===== Responsive: Large desktop (>=1200px) ===== */
+@media(min-width:1200px){
+  .container{max-width:1000px}
+  .main-row{grid-template-columns:1fr 1.2fr;gap:24px}
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="header-left">
+      <h1>🎵 Music <span class="accent">Radio</span></h1>
+      <div class="status"><div class="dot" id="stDot"></div><span id="stTxt">连接中...</span></div>
+    </div>
+    <div class="header-user">
+      <input class="inp" id="usernameInp" placeholder="昵称" maxlength="20" />
+      <button class="btn" onclick="setUsername()">保存</button>
+    </div>
+  </div>
+
+  <div class="main-row">
+    <div class="left-col">
+      <div class="np-card" id="npCard">
+        <div class="np-glow"></div>
+        <!-- Live banner -->
+        <div class="live-banner">
+          <span class="live-badge off" id="liveBadge"><span class="red-dot"></span>LIVE</span>
+          <span class="listener-count" id="lcCount">🎧 0 人在线</span>
+        </div>
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+          <div class="tab-btn active" data-tab="play" onclick="switchPlayerTab('play')">🎵 播放</div>
+          <div class="tab-btn" data-tab="lyrics" onclick="onLyricsTabClick()">📝 歌词</div>
+        </div>
+        <!-- Play Panel -->
+        <div class="tab-panel active" id="panelPlay">
+          <div class="np-body">
+            <div class="np-cover" id="npCover"><span id="npCoverIcon">🎶</span></div>
+            <div class="np-title" id="npTitle">等待开播...</div>
+            <div class="np-artist" id="npArtist">—</div>
+            <div class="np-progress-wrap">
+              <div class="np-progress" onclick="seekTo(event)">
+                <div class="np-buffer" id="npBuffer"></div>
+                <div class="np-fill" id="npFill"></div>
+              </div>
+              <div class="np-time"><span id="npCur">0:00</span><span id="npDur">/ 0:00</span></div>
+            </div>
+            <button class="play-main idle" id="playBtn" onclick="toggleAudio()">
+              <svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <div class="np-status" id="npStatus"><span class="s-dot off" id="sDot"></span><span id="sTxt">连接中...</span></div>
+          </div>
+        </div>
+        <!-- Lyrics Panel -->
+        <div class="tab-panel" id="panelLyrics">
+          <div class="lyrics-panel" id="lyricsPanel">
+            <div class="no-lyrics">
+              <div class="no-lyrics-icon">🎵</div>
+              <div class="no-lyrics-text">等待开播...</div>
+              <div class="no-lyrics-sub">歌词将自动匹配当前曲目</div>
+            </div>
+          </div>
+          <div class="song-info" id="songInfo">
+            <div class="song-info-row"><span class="song-info-label">曲名</span><span class="song-info-value" id="siTitle">—</span></div>
+            <div class="song-info-row"><span class="song-info-label">歌手</span><span class="song-info-value" id="siArtist">—</span></div>
+            <div class="song-info-row"><span class="song-info-label">专辑</span><span class="song-info-value" id="siAlbum">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-col">
+      <div class="chat-card">
+        <div class="chat-header">
+          <h2>💬 聊天室</h2>
+          <span class="online-count" id="ucnt">0 在线</span>
+        </div>
+        <div class="chat-messages" id="chatMsgs">
+          <div class="msg system">正在连接服务器...</div>
+        </div>
+        <div class="chat-input-area">
+          <div class="chat-form">
+            <input class="chat-inp" id="chatInp" placeholder="发送消息..." maxlength="200"/>
+            <button class="chat-send" onclick="sendChat()">发送</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+<audio id="radioAudio" preload="auto" crossorigin="anonymous"></audio>
+
+<!-- Kicked Overlay -->
+<div class="kicked-overlay" id="kickedOverlay">
+  <div class="kicked-icon">🚫</div>
+  <div class="kicked-title">你已被移出直播间</div>
+  <div class="kicked-reason" id="kickedReason">主播将你移出了直播间</div>
+  <div class="kicked-sub">你无法再收听此直播</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+let ws = null;
+let myUid = '';
+let myUsername = '听众' + Math.floor(Math.random() * 9000 + 1000);
+let currentTrack = null;
+let currentPosition = 0;
+let isPlaying = false;
+let listenersCount = 0;
+let userAudioEnabled = true;
+let reconnectTimer = null;
+let autoplayBlocked = false;
+let pendingAutoPlay = false;
+
+const audio = $('radioAudio');
+
+// ========== Seek ========== 
+// Touch seek on progress bar
+function setupTouchSeek(){
+  const bar = document.querySelector('.np-progress');
+  if(!bar) return;
+  let seeking = false;
+  function doSeek(touch){
+    if(!currentTrack || !currentTrack.duration) return;
+    const rect = bar.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
+    const pos = pct * currentTrack.duration;
+    if(userAudioEnabled && !audio.paused) audio.currentTime = pos;
+    currentPosition = pos;
+    updateNowPlaying();
+  }
+  bar.addEventListener('touchstart', function(e){
+    seeking = true; doSeek(e.touches[0]);
+  }, {passive: true});
+  bar.addEventListener('touchmove', function(e){
+    if(!seeking) return;
+    e.preventDefault(); doSeek(e.touches[0]);
+  }, {passive: false});
+  bar.addEventListener('touchend', function(){ seeking = false; });
+}
+
+function seekTo(e){
+  if(!currentTrack || !currentTrack.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const pos = pct * currentTrack.duration;
+  if(userAudioEnabled && !audio.paused) audio.currentTime = pos;
+  currentPosition = pos;
+  updateNowPlaying();
+}
+
+// ========== UI ==========
+function setPlayUI(playing){
+  const btn = $('playBtn');
+  if(playing){
+    btn.className = 'play-main';
+    btn.innerHTML = '<span class="pause-bars"><span></span><span></span></span>';
+    $('npCard').classList.add('is-playing');
+  } else {
+    btn.className = 'play-main idle';
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+    $('npCard').classList.remove('is-playing');
+  }
+}
+
+function setLiveUI(live){
+  $('liveBadge').className = 'live-badge' + (live ? '' : ' off');
+  $('lcCount').textContent = '🎧 ' + listenersCount + ' 人在线';
+}
+
+function setStatusUI(text, active){
+  $('sTxt').textContent = text;
+  $('sDot').className = 's-dot' + (active ? '' : ' off');
+}
+
+// ========== tryPlay ==========
+function tryPlay(track, position){
+  if(!track || !track.url) return;
+  // URL类型曲目直接用原始URL，其他曲目拼接域名
+  const fullUrl = track.url.startsWith('http') ? track.url : (location.origin + track.url);
+  if(audio.src === fullUrl || audio.src === track.url){
+    // 同一首歌：如果 ended 了需要 load() 才能重新播放
+    if(audio.ended || audio.currentTime >= (audio.duration || 0) - 0.5){
+      audio.currentTime = 0;
+      audio.load();
+      audio.addEventListener('canplay', function h(){
+        audio.removeEventListener('canplay', h);
+        audio.currentTime = Math.max(0, position);
+        audio.play().then(onPlayOK).catch(onPlayFail);
+      }, {once:true});
+      return;
+    }
+    if(Math.abs(audio.currentTime - position) > 2) audio.currentTime = position;
+    if(audio.paused){
+      audio.play().then(onPlayOK).catch(onPlayFail);
+    }
+    return;
+  }
+  audio.src = fullUrl;
+  audio.currentTime = 0;
+  audio.load();
+  $('npBuffer').style.width = '0%';
+  setStatusUI('同步中...', true);
+  let ready = false, bufCheck = null;
+  function checkBuf(){
+    if(audio.buffered.length > 0){
+      const end = audio.buffered.end(audio.buffered.length - 1);
+      if(end - audio.currentTime > 3){ ready = true; clearBuf(); go(); }
+    }
+  }
+  function clearBuf(){ if(bufCheck){ clearInterval(bufCheck); bufCheck = null; } }
+  function go(){
+    if(!ready) return;
+    audio.currentTime = Math.max(0, position);
+    audio.play().then(onPlayOK).catch(onPlayFail);
+  }
+  bufCheck = setInterval(checkBuf, 100);
+  setTimeout(() => { clearBuf(); if(!ready){ ready = true; go(); } }, 6000);
+  audio.addEventListener('canplay', function h(){
+    audio.removeEventListener('canplay', h);
+    if(!ready){ ready = true; clearBuf(); startBufLoop(); go(); }
+  }, {once:true});
+  audio.addEventListener('error', function h(){
+    audio.removeEventListener('error', h); clearBuf();
+    stopBufLoop(); setPlayUI(false); setStatusUI('音频加载失败', false);
+  }, {once:true});
+}
+
+function onPlayOK(){
+  setPlayUI(true);
+  setStatusUI('正在收听直播', true);
+  autoplayBlocked = false;
+  pendingAutoPlay = false;
+}
+
+function onPlayFail(e){
+  console.warn('[MR] Play blocked:', e.name, e.message);
+  if(e.name === 'NotAllowedError'){
+    autoplayBlocked = true;
+    pendingAutoPlay = true;
+    setPlayUI(false);
+    setStatusUI('点击任意位置开始收听', false);
+  } else {
+    setPlayUI(false);
+    setStatusUI('播放失败，请重试', false);
+  }
+}
+
+function onUserActivate(){
+  if(!pendingAutoPlay || !currentTrack || !isPlaying) return;
+  pendingAutoPlay = false;
+  tryPlay(currentTrack, currentPosition);
+}
+document.addEventListener('click', onUserActivate, {once: false});
+document.addEventListener('touchstart', onUserActivate, {once: false, passive: true});
+
+function toggleAudio(){
+  if(!currentTrack){
+    toast('主播尚未开播');
+    return;
+  }
+  if(audio.paused || autoplayBlocked){
+    userAudioEnabled = true;
+    autoplayBlocked = false;
+    pendingAutoPlay = false;
+    tryPlay(currentTrack, currentPosition);
+  } else {
+    audio.pause();
+    setPlayUI(false);
+    setStatusUI('已静音', false);
+  }
+}
+
+// ========== Audio events ==========
+audio.addEventListener('loadedmetadata', () => {
+  if(currentTrack && audio.duration && !isNaN(audio.duration)){
+    if(ws && ws.readyState === WebSocket.OPEN){
+      ws.send(JSON.stringify({ type:'report_duration', track_id:currentTrack.id, duration:audio.duration }));
+    }
+  }
+});
+audio.addEventListener('ended', () => {
+  stopBufLoop();
+  // 不上报服务端，切歌由服务端 tick_position() 驱动
+  // 本地等待服务端广播 now_playing 新歌曲
+  setStatusUI('等待下一首...', true);
+});
+audio.addEventListener('pause', () => stopBufLoop());
+audio.addEventListener('progress', () => updateBuf());
+
+// 用本地音频播放时间驱动歌词高亮和进度条更新（每250ms）
+// 服务器 position_update 每秒才来一次，用本地时间更流畅精准
+audio.addEventListener('timeupdate', () => {
+  if(!audio.paused && !isNaN(audio.currentTime) && currentTrack){
+    // 用本地播放时间更新位置（仅在本地正在播放时）
+    currentPosition = audio.currentTime;
+    // 更新进度条
+    const dur = currentTrack.duration || 0;
+    const pct = dur > 0 ? Math.min(100, currentPosition / dur * 100) : 0;
+    $('npFill').style.width = pct + '%';
+    $('npCur').textContent = fmt(currentPosition);
+    $('npDur').textContent = '/ ' + fmt(dur);
+    // 更新歌词高亮
+    updateLyricsHighlight();
+  }
+});
+
+// ========== Now Playing ==========
+let lastCoverTrackId = null;  // 记录上次渲染封面的曲目ID
+let parsedLyrics = [];        // 解析后的歌词行 [{time: 12.3, text: "歌词"}, ...]
+let lastLrcIdx = -1;          // 上次高亮的歌词行索引
+let lyricsSourceIdx = 0;      // 当前歌词源索引
+const LYRICS_SOURCES = ['lrclib', 'lrclib-alt', 'netease'];  // 可用歌词源
+
+function updateNowPlaying(){
+  if(!currentTrack){
+    $('npTitle').textContent = '等待开播...';
+    $('npArtist').textContent = '—';
+    $('npCur').textContent = '0:00'; $('npDur').textContent = '/ 0:00';
+    $('npFill').style.width = '0%'; $('npBuffer').style.width = '0%';
+    if(lastCoverTrackId !== null){
+      $('npCover').innerHTML = '<span id="npCoverIcon">🎶</span>';
+      lastCoverTrackId = null;
+    }
+    return;
+  }
+  $('npTitle').textContent = currentTrack.title || '未知曲目';
+  $('npArtist').textContent = currentTrack.artist || '未知艺术家';
+  // 只在曲目ID变化时才重新渲染封面和歌词
+  if(currentTrack.id !== lastCoverTrackId){
+    lastCoverTrackId = currentTrack.id;
+    lyricsSourceIdx = 0;  // 新曲目重置歌词源
+    const cEl = $('npCover');
+    if(currentTrack.cover){
+      cEl.innerHTML = `<img src="${currentTrack.cover}" alt="cover" onerror="this.parentNode.innerHTML='<span id=npCoverIcon>🎶</span>'">`;
+    } else {
+      cEl.innerHTML = '<span id="npCoverIcon">🎵</span>';
+    }
+    // 重新解析歌词
+    parseAndRenderLyrics();
+    // 更新歌曲信息
+    updateSongInfo();
+  }
+  const dur = currentTrack.duration || 0;
+  const pct = dur > 0 ? Math.min(100, currentPosition / dur * 100) : 0;
+  $('npFill').style.width = pct + '%';
+  $('npCur').textContent = fmt(currentPosition);
+  $('npDur').textContent = '/ ' + fmt(dur);
+  updateBuf();
+  // 更新滚动歌词高亮
+  updateLyricsHighlight();
+}
+
+function updateBuf(){
+  if(!audio || !audio.buffered || !audio.buffered.length){ $('npBuffer').style.width = '0%'; return; }
+  const dur = audio.duration || currentTrack?.duration || 0;
+  if(dur > 0) $('npBuffer').style.width = Math.min(100, audio.buffered.end(audio.buffered.length - 1) / dur * 100) + '%';
+}
+
+function updateStatus(){
+  const ok = ws && ws.readyState === WebSocket.OPEN;
+  $('stDot').className = 'dot' + (ok ? ' live' : '');
+  $('stTxt').textContent = ok ? (isPlaying ? '直播中' : '已连接') : '离线';
+  setLiveUI(ok && isPlaying);
+}
+
+// ========== Chat ==========
+function setUsername(){
+  const n = $('usernameInp').value.trim();
+  if(!n) return;
+  myUsername = n.substring(0,20);
+  $('usernameInp').value = myUsername;
+  if(ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type:'set_username',username:myUsername}));
+  toast('昵称已更新');
+}
+
+function sendChat(){
+  const m = $('chatInp').value.trim();
+  if(!m) return;
+  if(!ws || ws.readyState !== WebSocket.OPEN){ toast('未连接'); return; }
+  $('chatInp').value = '';
+  try{ ws.send(JSON.stringify({type:'chat',username:myUsername,message:m,role:'user'})); }catch(e){ toast('发送失败'); }
+}
+
+function addChatMsg(d){
+  const el = $('chatMsgs');
+  const rc = d.role === 'admin' ? 'admin' : 'user';
+  const rt = d.role === 'admin' ? '主播' : '听众';
+  const av = d.role === 'admin' ? '🎛️' : '🎧';
+  const div = document.createElement('div');
+  div.className = 'msg';
+  div.innerHTML = `<div class="msg-avatar">${av}</div><div class="msg-content"><div class="msg-header"><span class="msg-name">${esc(d.username||'匿名')}</span><span class="msg-role ${rc}">${rt}</span><span class="msg-time">${d.timestamp||''}</span></div><div class="msg-text">${esc(d.message)}</div></div>`;
+  el.appendChild(div); el.scrollTop = el.scrollHeight;
+}
+
+function addSystemMsg(m){
+  const el = $('chatMsgs');
+  const div = document.createElement('div');
+  div.className = 'msg system'; div.textContent = m;
+  el.appendChild(div); el.scrollTop = el.scrollHeight;
+}
+
+// ========== WebSocket ==========
+function connectWS(){
+  if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer = null; }
+  const p = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  try{ ws = new WebSocket(`${p}//${location.host}/ws`); }catch(e){ scheduleReconnect(); return; }
+  ws.onopen = () => { updateStatus(); setStatusUI('已连接', true); if(myUsername) ws.send(JSON.stringify({type:'set_username',username:myUsername})); };
+  ws.onclose = () => { updateStatus(); setStatusUI('连接断开', false); addSystemMsg('连接断开，正在重连...'); scheduleReconnect(); };
+  ws.onerror = () => ws.close();
+  ws.onmessage = e => { try{ handleWS(JSON.parse(e.data)); }catch(err){ console.error(err); } };
+}
+
+function scheduleReconnect(){
+  if(!reconnectTimer) reconnectTimer = setTimeout(() => { reconnectTimer = null; connectWS(); }, 3000);
+}
+
+function handleWS(d){
+  switch(d.type){
+    case 'init':
+      myUid = d.uid;
+      $('chatMsgs').innerHTML = '';
+      addSystemMsg('已连接到直播间！');
+      if(d.current_index >= 0 && d.playlist?.length > 0){
+        const t = d.playlist[d.current_index];
+        if(t){
+          currentTrack = t; isPlaying = d.is_playing; currentPosition = d.position || 0;
+          updateNowPlaying();
+          if(isPlaying){
+            tryPlay(currentTrack, currentPosition);
+          }
+        }
+      }
+      listenersCount = d.user_count || 0;
+      $('ucnt').textContent = listenersCount + ' 在线';
+      $('lcCount').textContent = '🎧 ' + listenersCount + ' 人在线';
+      updateStatus();
+      break;
+    case 'user_count':
+      listenersCount = d.count || 0;
+      $('ucnt').textContent = listenersCount + ' 在线';
+      $('lcCount').textContent = '🎧 ' + listenersCount + ' 人在线';
+      updateStatus();
+      break;
+    case 'now_playing':
+      const prevId = currentTrack?.id;
+      currentTrack = d.track; isPlaying = d.is_playing; currentPosition = d.position || 0;
+      updateNowPlaying();
+      if(isPlaying && currentTrack){
+        if(currentTrack.id !== prevId){
+          tryPlay(currentTrack, currentPosition);
+        } else {
+          if(audio.paused || autoplayBlocked){
+            tryPlay(currentTrack, currentPosition);
+          } else if(Math.abs(audio.currentTime - currentPosition) > 3){
+            audio.currentTime = currentPosition;
+          }
+          setPlayUI(true);
+          setStatusUI('正在收听直播', true);
+        }
+      } else {
+        if(!audio.paused) audio.pause();
+        setPlayUI(false); setStatusUI('主播已暂停', false);
+      }
+      updateStatus();
+      break;
+    case 'position_update':
+      if(currentTrack && d.track_id === currentTrack.id){
+        // 本地播放中：以 audio.currentTime 为主（timeupdate 事件驱动），仅偏差>3秒时校准
+        if(!audio.paused && userAudioEnabled){
+          if(Math.abs(audio.currentTime - d.position) > 3){
+            audio.currentTime = d.position;
+            currentPosition = d.position;
+            updateNowPlaying();
+          }
+          // 小偏差不处理，让 timeupdate 本地时间驱动歌词和进度条
+        } else {
+          // 未播放时：直接用服务器位置
+          currentPosition = d.position;
+          updateNowPlaying();
+        }
+      }
+      break;
+    case 'seek':
+      currentPosition = d.position;
+      if(currentTrack && userAudioEnabled && !audio.paused) audio.currentTime = d.position;
+      updateNowPlaying();
+      break;
+    case 'playlist_update': break;
+    case 'chat': addChatMsg(d); break;
+    case 'kicked':
+      // 停止播放
+      audio.pause();
+      audio.src = '';
+      stopBufLoop();
+      setPlayUI(false);
+      // 显示全屏踢出提示
+      const reason = d.reason || '主播将你移出了直播间';
+      $('kickedReason').textContent = reason;
+      $('kickedOverlay').classList.add('show');
+      // 断开 WebSocket，不再重连
+      if(ws){
+        ws.onclose = null; // 防止触发重连
+        ws.close();
+        ws = null;
+      }
+      updateStatus();
+      break;
+  }
+}
+
+// ========== Tab Switching ==========
+function switchPlayerTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $('panelPlay').classList.toggle('active', tab === 'play');
+  $('panelLyrics').classList.toggle('active', tab === 'lyrics');
+
+  // 如果切到歌词 tab 且当前没有歌词，立即触发搜索
+  if(tab === 'lyrics' && currentTrack && parsedLyrics.length === 0){
+    searchLyricsFromAPI();
+  }
+}
+
+// 歌词 tab 点击：如果已在歌词页则切换歌词源，否则切到歌词页
+function onLyricsTabClick(){
+  const lyricsPanel = $('panelLyrics');
+  if(lyricsPanel.classList.contains('active')){
+    // 已在歌词页面 → 切换歌词源
+    switchLyricsSource();
+  } else {
+    switchPlayerTab('lyrics');
+  }
+}
+
+// ========== Lyrics ==========
+
+// 解析时间字符串 "HH:MM:SS.mmm" 或 "MM:SS.mmm" 为秒数
+function parseTimestamp(ts){
+  const parts = ts.trim().split(':');
+  if(parts.length === 3){
+    return parseInt(parts[0],10)*3600 + parseInt(parts[1],10)*60 + parseFloat(parts[2]);
+  } else if(parts.length === 2){
+    return parseInt(parts[0],10)*60 + parseFloat(parts[1]);
+  }
+  return 0;
+}
+
+// LRC 格式: [mm:ss.xx]歌词文本
+function parseLRC(text){
+  if(!text) return [];
+  const lines = text.split('\n');
+  const result = [];
+  const timeReg = /\[(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?\]/g;
+  for(const line of lines){
+    const times = [];
+    let m;
+    while((m = timeReg.exec(line)) !== null){
+      const min = parseInt(m[1], 10);
+      const sec = parseInt(m[2], 10);
+      const ms = m[3] ? parseInt(m[3].padEnd(3, '0'), 10) : 0;
+      times.push(min * 60 + sec + ms / 1000);
+    }
+    const txt = line.replace(/\[\d{1,2}:\d{1,2}(?:\.\d{1,3})?\]/g, '').trim();
+    if(times.length > 0 && txt){
+      for(const t of times) result.push({time: t, text: txt});
+    }
+  }
+  result.sort((a, b) => a.time - b.time);
+  return result;
+}
+
+// SRT 格式:
+// 1
+// 00:01:23,456 --> 00:01:25,789
+// 歌词文本
+function parseSRT(text){
+  if(!text) return [];
+  const result = [];
+  const blocks = text.trim().split(/\n\s*\n/);
+  for(const block of blocks){
+    const lines = block.split('\n');
+    // 找时间行
+    const timeLine = lines.find(l => /\d{2}:\d{2}/.test(l) && /-->/.test(l));
+    if(!timeLine) continue;
+    const match = timeLine.match(/(\d{1,2}:\d{2}:\d{2}[,\.]\d{1,3}|\d{1,2}:\d{2}[,\.]\d{1,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,\.]\d{1,3}|\d{1,2}:\d{2}[,\.]\d{1,3})/);
+    if(!match) continue;
+    const start = parseTimestamp(match[1].replace(',', '.'));
+    // 歌词文本 = 时间行之后的所有行
+    const textLines = lines.slice(lines.indexOf(timeLine) + 1).filter(l => l.trim());
+    const txt = textLines.join(' ').replace(/<[^>]+>/g, '').trim();  // 去掉HTML标签
+    if(txt) result.push({time: start, text: txt});
+  }
+  result.sort((a, b) => a.time - b.time);
+  return result;
+}
+
+// VTT 格式 (WebVTT):
+// WEBVTT
+// 00:01:23.456 --> 00:01:25.789
+// 歌词文本
+function parseVTT(text){
+  if(!text) return [];
+  const result = [];
+  // 去掉 WEBVTT 头部
+  const body = text.replace(/^WEBVTT[^\n]*\n/, '');
+  const blocks = body.trim().split(/\n\s*\n/);
+  for(const block of blocks){
+    const lines = block.split('\n');
+    const timeLine = lines.find(l => /\d{2}:\d{2}/.test(l) && /-->/.test(l));
+    if(!timeLine) continue;
+    const match = timeLine.match(/(\d{1,2}:\d{2}:\d{2}\.\d{1,3}|\d{1,2}:\d{2}\.\d{1,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}\.\d{1,3}|\d{1,2}:\d{2}\.\d{1,3})/);
+    if(!match) continue;
+    const start = parseTimestamp(match[1]);
+    const textLines = lines.slice(lines.indexOf(timeLine) + 1).filter(l => l.trim());
+    const txt = textLines.join(' ').replace(/<[^>]+>/g, '').trim();
+    if(txt) result.push({time: start, text: txt});
+  }
+  result.sort((a, b) => a.time - b.time);
+  return result;
+}
+
+// ASS/SSA 格式:
+// Dialogue: 0,0:01:23.45,0:01:25.78,Default,,0,0,0,,歌词文本
+function parseASS(text){
+  if(!text) return [];
+  const result = [];
+  const lines = text.split('\n');
+  for(const line of lines){
+    if(!line.startsWith('Dialogue:')) continue;
+    const parts = line.substring(9).split(',');
+    if(parts.length < 10) continue;
+    const start = parseTimestamp(parts[1].trim());
+    // 歌词文本从第10个字段开始，可能有逗号所以join回来
+    const txt = parts.slice(9).join(',').replace(/\{[^}]*\}/g, '').replace(/\\N/g, ' ').trim();
+    if(txt) result.push({time: start, text: txt});
+  }
+  result.sort((a, b) => a.time - b.time);
+  return result;
+}
+
+// 自动检测歌词格式并解析
+function detectAndParseLyrics(text){
+  if(!text) return [];
+  const trimmed = text.trim();
+
+  // LRC: 包含 [mm:ss.xx] 时间标签
+  if(/\[\d{1,2}:\d{2}/.test(trimmed)){
+    const parsed = parseLRC(trimmed);
+    if(parsed.length > 0) return parsed;
+  }
+
+  // SRT: 包含序号+时间行 "1\n00:01:23,456 --> 00:01:25,789"
+  if(/\d{2}:\d{2}[,\.]\d{1,3}\s*-->/.test(trimmed) && /^\d+\s*$/m.test(trimmed)){
+    const parsed = parseSRT(trimmed);
+    if(parsed.length > 0) return parsed;
+  }
+
+  // VTT: 以 WEBVTT 开头
+  if(/^WEBVTT/i.test(trimmed)){
+    const parsed = parseVTT(trimmed);
+    if(parsed.length > 0) return parsed;
+  }
+
+  // ASS/SSA: 包含 Dialogue: 行
+  if(/^Dialogue:/m.test(trimmed)){
+    const parsed = parseASS(trimmed);
+    if(parsed.length > 0) return parsed;
+  }
+
+  // 以上都不匹配，尝试所有解析器兜底
+  for(const parser of [parseLRC, parseSRT, parseVTT, parseASS]){
+    try{
+      const parsed = parser(trimmed);
+      if(parsed.length > 0) return parsed;
+    }catch(e){}
+  }
+
+  // 全部失败，返回空数组（将作为纯文本显示）
+  return [];
+}
+
+function parseAndRenderLyrics(){
+  const panel = $('lyricsPanel');
+  lastLrcIdx = -1;
+
+  if(!currentTrack){
+    parsedLyrics = [];
+    panel.innerHTML = '<div class="no-lyrics"><div class="no-lyrics-icon">🎵</div><div class="no-lyrics-text">暂无歌词</div><div class="no-lyrics-sub">当前曲目未嵌入歌词信息</div></div>';
+    return;
+  }
+
+  if(!currentTrack.lyrics){
+    parsedLyrics = [];
+    panel.innerHTML = '<div class="no-lyrics"><div class="no-lyrics-icon">🔍</div><div class="no-lyrics-text">正在搜索歌词...</div><div class="no-lyrics-sub">' + esc(currentTrack.title || '') + ' - ' + esc(currentTrack.artist || '') + '</div></div>';
+    // 尝试从 API 搜索歌词
+    searchLyricsFromAPI();
+    return;
+  }
+
+  // 自动检测歌词格式并解析
+  parsedLyrics = detectAndParseLyrics(currentTrack.lyrics);
+
+  if(parsedLyrics.length > 0){
+    // 时间同步歌词 - 渲染滚动歌词
+    panel.innerHTML = '<div style="height:40%"></div>' +
+      parsedLyrics.map((l, i) => `<div class="lrc-line" data-idx="${i}">${esc(l.text)}</div>`).join('') +
+      '<div style="height:40%"></div>';
+  } else {
+    // 纯文本歌词 - 直接显示
+    parsedLyrics = [];
+    const plainLines = currentTrack.lyrics.split('\n').filter(l => l.trim());
+    panel.innerHTML = '<div style="height:20px"></div>' +
+      plainLines.map(l => `<div class="lrc-line">${esc(l)}</div>`).join('') +
+      '<div style="height:20px"></div>';
+  }
+}
+
+function updateLyricsHighlight(){
+  if(parsedLyrics.length === 0) return;
+  const panel = $('lyricsPanel');
+
+  // 找到当前应该高亮的行
+  let idx = -1;
+  for(let i = parsedLyrics.length - 1; i >= 0; i--){
+    if(currentPosition >= parsedLyrics[i].time - 0.3){
+      idx = i;
+      break;
+    }
+  }
+
+  if(idx === lastLrcIdx) return;
+  lastLrcIdx = idx;
+
+  // 更新高亮样式
+  const lines = panel.querySelectorAll('.lrc-line[data-idx]');
+  lines.forEach(el => {
+    const i = parseInt(el.dataset.idx, 10);
+    el.classList.toggle('active', i === idx);
+    el.classList.toggle('passed', i < idx);
+  });
+
+  // 滚动到当前行
+  if(idx >= 0){
+    const activeEl = panel.querySelector(`.lrc-line[data-idx="${idx}"]`);
+    if(activeEl){
+      const panelRect = panel.getBoundingClientRect();
+      const elRect = activeEl.getBoundingClientRect();
+      const offset = elRect.top - panelRect.top - panelRect.height / 2 + elRect.height / 2;
+      panel.scrollTop += offset;
+    }
+  }
+}
+
+function updateSongInfo(){
+  if(!currentTrack) return;
+  $('siTitle').textContent = currentTrack.title || '—';
+  $('siArtist').textContent = currentTrack.artist || '—';
+  $('siAlbum').textContent = currentTrack.album || '—';
+}
+
+// ========== Lyrics API Fallback ==========
+let lyricsSearchAbort = null;  // 防止重复请求
+let lyricsSearchTrackId = '';  // 当前搜索歌词对应的曲目ID
+
+const SOURCE_NAMES = {'lrclib':'LRCLIB','lrclib-alt':'LRCLIB 备选','netease':'网易云','lrclib-exact':'LRCLIB','lrclib-search':'LRCLIB'};
+
+async function searchLyricsFromAPI(){
+  if(!currentTrack) return;
+  // 取消之前的请求
+  if(lyricsSearchAbort) lyricsSearchAbort.abort();
+  const controller = new AbortController();
+  lyricsSearchAbort = controller;
+  lyricsSearchTrackId = currentTrack.id;  // 记录本次搜索的曲目
+
+  const title = currentTrack.title || '';
+  const artist = currentTrack.artist || '';
+  if(!title && !artist) return;
+
+  const source = LYRICS_SOURCES[lyricsSourceIdx] || 'lrclib';
+  const sourceName = SOURCE_NAMES[source] || source;
+
+  // 显示搜索中状态（含当前源名称）
+  const panel = $('lyricsPanel');
+  panel.innerHTML = '<div class="no-lyrics"><div class="no-lyrics-icon">🔍</div><div class="no-lyrics-text">正在搜索歌词...</div><div class="no-lyrics-sub">' + esc(title) + ' - ' + esc(artist) + ' · ' + esc(sourceName) + '</div></div>';
+
+  try{
+    const params = new URLSearchParams({title: title, artist: artist, source: source});
+    const resp = await fetch('/api/lyrics/search?' + params.toString(), {signal: controller.signal});
+    const result = await resp.json();
+
+    if(controller.signal.aborted) return;  // 已取消
+
+    // 歌曲已切换，丢弃旧结果
+    if(lyricsSearchTrackId !== currentTrack.id) return;
+
+    // API 响应格式: {success: true, lyrics: "LRC文本", source: "lrclib-exact"}
+    let lyricsText = null;
+    if(result.success && result.lyrics && typeof result.lyrics === 'string' && result.lyrics.trim()){
+      lyricsText = result.lyrics;
+    } else if(result.success && result.data){
+      const apiData = result.data;
+      if(typeof apiData === 'string' && apiData.trim()){
+        lyricsText = apiData;
+      } else if(typeof apiData === 'object'){
+        lyricsText = apiData.lyrics || apiData.lrc || apiData.content || apiData.text || null;
+      }
+    }
+
+    // 再次校验曲目未切换
+    if(lyricsSearchTrackId !== currentTrack.id) return;
+
+    if(lyricsText){
+      parsedLyrics = detectAndParseLyrics(lyricsText);
+      const resultSource = SOURCE_NAMES[result.source] || result.source || sourceName;
+      if(parsedLyrics.length > 0){
+        lastLrcIdx = -1;
+        panel.innerHTML = '<div style="height:40%"></div>' +
+          parsedLyrics.map((l, i) => `<div class="lrc-line" data-idx="${i}">${esc(l.text)}</div>`).join('') +
+          '<div style="height:40%"></div>' +
+          '<div style="text-align:center;padding:8px;font-size:10px;color:var(--text-dim);opacity:.6">🎵 ' + esc(resultSource) + ' · 点击此 tab 切换歌词源</div>';
+        updateLyricsHighlight();
+        return;
+      }
+      const plainLines = lyricsText.split('\n').filter(l => l.trim());
+      if(plainLines.length > 0){
+        parsedLyrics = [];
+        panel.innerHTML = '<div style="height:20px"></div>' +
+          plainLines.map(l => `<div class="lrc-line">${esc(l)}</div>`).join('') +
+          '<div style="height:20px"></div>';
+        return;
+      }
+    }
+
+    // 搜索失败或无结果 — 提示可切换源
+    const nextSourceIdx = (lyricsSourceIdx + 1) % LYRICS_SOURCES.length;
+    const nextSourceName = SOURCE_NAMES[LYRICS_SOURCES[nextSourceIdx]] || LYRICS_SOURCES[nextSourceIdx];
+    panel.innerHTML = '<div class="no-lyrics"><div class="no-lyrics-icon">🎵</div><div class="no-lyrics-text">未找到歌词</div><div class="no-lyrics-sub">' + esc(title) + ' · ' + esc(sourceName) + '</div><div class="no-lyrics-sub" style="margin-top:8px;cursor:pointer;color:var(--accent)" onclick="switchLyricsSource()">→ 尝试 ' + esc(nextSourceName) + '</div></div>';
+  }catch(e){
+    if(e.name === 'AbortError') return;
+    console.warn('[MR] Lyrics API error:', e);
+    if(lyricsSearchTrackId === currentTrack.id){
+      panel.innerHTML = '<div class="no-lyrics"><div class="no-lyrics-icon">🎵</div><div class="no-lyrics-text">歌词搜索失败</div><div class="no-lyrics-sub">请稍后再试</div></div>';
+    }
+  }
+}
+
+// 手动切换歌词源
+function switchLyricsSource(){
+  lyricsSourceIdx = (lyricsSourceIdx + 1) % LYRICS_SOURCES.length;
+  searchLyricsFromAPI();
+}
+
+// ========== Utils ==========
+function fmt(s){ if(!s||isNaN(s)||s<0) return '0:00'; return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
+function esc(s){ if(!s) return ''; const d=document.createElement('div'); d.textContent=String(s); return d.innerHTML; }
+let _tt=null;
+function toast(m){ const e=$('toastEl'); if(_tt) clearTimeout(_tt); e.textContent=m; e.classList.add('show'); _tt=setTimeout(()=>e.classList.remove('show'),2500); }
+
+let bufLoop=null;
+function startBufLoop(){ if(bufLoop) clearInterval(bufLoop); bufLoop=setInterval(updateBuf,500); }
+function stopBufLoop(){ if(bufLoop){ clearInterval(bufLoop); bufLoop=null; } }
+
+// ========== Init ==========
+connectWS();
+setupTouchSeek();
+$('usernameInp').addEventListener('keydown', e => { if(e.key==='Enter') setUsername(); });
+$('chatInp').addEventListener('keydown', e => { if(e.key==='Enter') sendChat(); });
+</script>
+</body>
+</html>

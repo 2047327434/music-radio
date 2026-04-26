@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Music Radio · 主播台</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#000000;--surface:#1C1C1E;--surface2:#2C2C2E;--surface3:#3A3A3C;
+  --border:#3A3A3C;--text:#FFFFFF;--text-dim:#8E8E93;
+  --accent:#FA2D48;--accent-light:#FF6B81;--accent-dark:#D4233C;
+  --green:#30D158;--glow:rgba(250,45,72,.3);--glow2:rgba(250,45,72,.12);
+  --blue:#0A84FF;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,'SF Pro Display','SF Pro Text',Segoe UI,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+
+/* ===== Layout ===== */
+.container{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+.panel{background:var(--surface);overflow:hidden;display:flex;flex-direction:column}
+
+/* Header — Apple Music Night */
+.header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:rgba(28,28,30,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);flex-shrink:0}
+.header h1{font-size:16px;font-weight:700;letter-spacing:-.3px}
+.status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);font-weight:500}
+.dot{width:7px;height:7px;border-radius:50%;background:#48484A;transition:all .3s;flex-shrink:0}
+.dot.connected{background:var(--green);box-shadow:0 0 8px rgba(48,209,88,.5)}
+.dot.live{background:var(--accent);box-shadow:0 0 10px var(--glow);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* Panel Headers */
+.panel-header{padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.panel-header h2{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-dim);font-weight:700}
+.badge{margin-left:auto;font-size:10px;color:var(--text-dim);background:var(--surface2);padding:2px 8px;border-radius:6px;font-weight:600}
+
+/* Sub-tab within playlist panel */
+.sub-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.sub-tab{flex:1;padding:8px 0;text-align:center;font-size:11px;font-weight:600;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.sub-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.sub-tab:hover{color:var(--text)}
+
+/* Playlist */
+.playlist{flex:1;overflow-y:auto;padding:4px;-webkit-overflow-scrolling:touch}
+.playlist::-webkit-scrollbar{width:4px}
+.playlist::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px}
+.track-item{display:flex;align-items:center;gap:6px;padding:8px 10px;margin-bottom:2px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;background:transparent}
+.track-item:hover{background:var(--surface2);border-color:transparent}
+.track-item.active{background:rgba(250,45,72,.12);border-color:rgba(250,45,72,.3)}
+.track-item.dragging{opacity:0.5}
+.track-item.drag-over{border-top:2px solid var(--accent);margin-top:-2px}
+.idx{font-size:10px;font-weight:700;color:var(--text-dim);min-width:18px;text-align:center}
+.track-thumb-wrap{width:32px;height:32px;border-radius:6px;overflow:hidden;flex-shrink:0;background:var(--surface2);display:flex;align-items:center;justify-content:center}
+.track-thumb{width:100%;height:100%;object-fit:cover;border-radius:6px}
+.track-thumb-placeholder{font-size:14px;color:var(--text-dim)}
+.info{flex:1;min-width:0}.title{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.artist{font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.source-tag{font-size:8px;padding:1px 4px;border-radius:3px;font-weight:700;margin-left:4px;vertical-align:middle}
+.source-tag.upload{background:rgba(250,45,72,.15);color:var(--accent)}
+.source-tag.local{background:rgba(10,132,255,.15);color:var(--blue)}
+.source-tag.url{background:rgba(48,209,88,.15);color:var(--green)}
+.dur{font-size:10px;color:var(--text-dim);font-variant-numeric:tabular-nums;font-weight:500}
+.track-btns{display:flex;gap:3px}
+.tb{width:24px;height:24px;border-radius:6px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;transition:all .15s}
+.tb:hover{transform:scale(1.1)}.tb-play{background:rgba(250,45,72,.15);color:var(--accent)}.tb-del{background:rgba(255,60,60,.1);color:#FF453A}
+
+/* Upload */
+.upload-area{padding:10px;border-top:1px solid var(--border);flex-shrink:0}
+.url-row{display:flex;gap:6px;margin-bottom:6px}
+.url-inp{flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:11px;outline:none;min-width:0;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
+.url-inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow2)}
+.add-btn{padding:7px 12px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
+.add-btn:hover{background:var(--accent-dark);box-shadow:0 2px 12px var(--glow)}
+.add-btn:active{transform:scale(.97)}
+
+.dropzone{position:relative;border:2px dashed var(--surface3);border-radius:10px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface)}
+.dropzone:hover,.dropzone.drag-over{border-color:var(--accent);background:rgba(250,45,72,.04)}
+.drop-icon{font-size:18px;margin-bottom:2px;opacity:.5}
+.drop-text{font-size:10px;color:var(--text-dim);line-height:1.4}
+#fileInput{position:absolute;width:0;height:0;opacity:0;overflow:hidden;pointer-events:none}
+.dz-label{display:block;cursor:pointer;padding:10px 8px}
+
+/* Fix: #subPl flex container so upload area stays visible */
+#subPl{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+
+/* Fix: left panel as flex child on mobile (not absolute covering tabs) */
+@media(max-width:639px){
+  .panel.left.mtab-panel{position:relative;flex:1;min-height:0;inset:auto}
+}
+
+/* Touch responsiveness */
+.track-item,.tbtn,.tb,.add-btn,.chat-send,.kick-btn,.local-add-btn,.mtab,.sub-tab,.dz-label{touch-action:manipulation}
+
+/* Touch drag reorder */
+.track-item.touch-dragging{opacity:0.5;transform:scale(0.95)}
+.track-item.touch-drag-over{border-top:2px solid var(--accent);margin-top:-2px}
+
+/* Upload progress */
+.upload-progress{margin-top:6px;display:none;max-height:100px;overflow-y:auto}
+.upload-progress.show{display:block}
+.up-item{background:var(--surface2);border:1px solid var(--surface3);border-radius:8px;padding:8px 10px;margin-bottom:3px}
+.up-fname{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.up-bar{height:4px;background:var(--bg);border-radius:2px;overflow:hidden;margin-bottom:3px}
+.up-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-light));width:0%;transition:width .15s linear;border-radius:2px}
+.up-info{display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim)}
+.up-pct{color:var(--accent);font-weight:700}
+.up-speed{font-variant-numeric:tabular-nums}
+
+/* ===== Local Music Browser ===== */
+.local-browser{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;display:none;flex-direction:column}
+.local-browser.active{display:flex}
+.local-breadcrumb{padding:8px 14px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--border);flex-shrink:0;font-size:11px}
+.bc-item{color:var(--blue);cursor:pointer;font-weight:500}
+.bc-item:hover{text-decoration:underline}
+.bc-sep{color:var(--text-dim);font-size:10px}
+.bc-current{color:var(--text);font-weight:600}
+.local-list{flex:1;overflow-y:auto;padding:4px;-webkit-overflow-scrolling:touch}
+.local-list::-webkit-scrollbar{width:4px}
+.local-list::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px}
+.local-dir{display:flex;align-items:center;gap:8px;padding:10px 12px;margin-bottom:2px;border-radius:10px;cursor:pointer;transition:all .2s}
+.local-dir:hover{background:var(--surface2)}
+.local-dir-icon{font-size:18px;flex-shrink:0}
+.local-dir-name{flex:1;font-size:12px;font-weight:600;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.local-dir-count{font-size:10px;color:var(--text-dim);font-weight:500}
+.local-file{display:flex;align-items:center;gap:8px;padding:8px 12px;margin-bottom:2px;border-radius:10px;transition:all .2s}
+.local-file:hover{background:var(--surface2)}
+.local-file-icon{font-size:16px;flex-shrink:0}
+.local-file-info{flex:1;min-width:0}
+.local-file-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.local-file-size{font-size:10px;color:var(--text-dim)}
+.local-add-btn{padding:5px 10px;border-radius:6px;border:1px solid rgba(10,132,255,.3);background:rgba(10,132,255,.1);color:var(--blue);font-size:10px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0}
+.local-add-btn:hover{background:rgba(10,132,255,.2);border-color:rgba(10,132,255,.5)}
+.local-add-btn:active{transform:scale(.97)}
+.local-add-btn.added{background:rgba(48,209,88,.15);border-color:rgba(48,209,88,.3);color:var(--green)}
+.local-empty{padding:30px 15px;text-align:center;color:var(--text-dim)}
+.local-empty-icon{font-size:32px;margin-bottom:6px;opacity:.5}
+.local-empty-text{font-size:12px;font-weight:500}
+
+/* Now Playing — Apple Music Night */
+.np-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 14px}
+.np-card{width:100%;max-width:340px;background:var(--surface2);border-radius:16px;padding:14px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+.np-cover{width:90px;height:90px;border-radius:12px;background:linear-gradient(145deg,var(--surface3),var(--surface2));margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:36px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+.np-cover img{width:100%;height:100%;object-fit:cover;border-radius:12px}
+.np-title{font-size:16px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px}
+.np-artist{font-size:12px;color:var(--text-dim);margin-bottom:10px;font-weight:500}
+.np-progress{width:100%;height:4px;background:var(--bg);border-radius:2px;overflow:hidden;margin-bottom:4px;cursor:pointer;position:relative}
+.np-progress::after{content:'';position:absolute;top:-10px;left:0;right:0;bottom:-10px}
+.np-fill{height:100%;background:var(--accent);width:0%;transition:width .2s linear;border-radius:2px}
+.np-time{display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-bottom:12px;font-weight:500;font-variant-numeric:tabular-nums}
+.transport{display:flex;align-items:center;justify-content:center;gap:12px}
+.tbtn{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--surface3);background:var(--surface2);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s}
+.tbtn:hover{transform:scale(1.06);border-color:var(--accent);background:rgba(250,45,72,.06)}
+.tbtn:active{transform:scale(.95)}
+.tbtn.play{width:50px;height:50px;border-color:var(--accent);background:rgba(250,45,72,.1);font-size:16px}
+.tbtn.play:hover{background:rgba(250,45,72,.16);box-shadow:0 0 24px var(--glow)}
+.tbtn.play.on{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 4px 20px var(--glow)}
+
+/* Chat — Apple Music Night */
+.chat-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.chat-messages{flex:1;overflow-y:auto;padding:8px;-webkit-overflow-scrolling:touch}
+.chat-messages::-webkit-scrollbar{width:4px}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px}
+.msg{margin-bottom:8px;display:flex;gap:6px;align-items:flex-start}
+.msg-avatar{width:24px;height:24px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.msg-content{flex:1;min-width:0}
+.msg-header{display:flex;align-items:center;gap:4px;margin-bottom:1px}
+.msg-name{font-size:11px;font-weight:600}
+.msg-role{font-size:8px;padding:1px 5px;border-radius:3px;font-weight:700}
+.msg-role.admin{background:var(--accent);color:#fff}
+.msg-role.user{background:var(--surface2);color:var(--text-dim)}
+.msg-time{font-size:9px;color:var(--text-dim);margin-left:auto;font-weight:500}
+.msg-text{font-size:12px;line-height:1.4;color:var(--text);word-break:break-word}
+.msg.system{font-size:11px;color:var(--text-dim);text-align:center;padding:4px;font-weight:500}
+
+.chat-input-area{padding:8px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.chat-form{display:flex;gap:6px}
+.chat-inp{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;outline:none;min-width:0;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
+.chat-inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow2)}
+.chat-send{padding:8px 14px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.chat-send:hover{background:var(--accent-dark);box-shadow:0 2px 12px var(--glow)}
+.chat-send:active{transform:scale(.97)}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);color:var(--text);padding:10px 20px;border-radius:12px;border:1px solid var(--surface3);font-size:12px;z-index:100000;opacity:0;transition:all .3s;box-shadow:0 8px 32px rgba(0,0,0,.5);pointer-events:none;font-weight:500;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ===== Auth Overlay ===== */
+.auth-overlay{position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.97);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);display:flex;align-items:center;justify-content:center;transition:opacity .5s,visibility .5s}
+.auth-overlay.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.auth-card{background:var(--surface);border:1px solid var(--surface3);border-radius:20px;padding:36px 32px;width:90%;max-width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.auth-icon{font-size:48px;margin-bottom:12px}
+.auth-title{font-size:20px;font-weight:700;margin-bottom:6px;letter-spacing:-.3px}
+.auth-subtitle{font-size:13px;color:var(--text-dim);margin-bottom:24px;font-weight:500}
+.auth-input-wrap{position:relative;margin-bottom:16px}
+.auth-input{width:100%;padding:14px 16px 14px 44px;border-radius:12px;border:1.5px solid var(--surface3);background:var(--surface2);color:var(--text);font-size:16px;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;letter-spacing:2px}
+.auth-input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--glow2)}
+.auth-input::placeholder{letter-spacing:0;color:var(--text-dim);font-size:13px}
+.auth-input-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:18px;opacity:.5}
+.auth-btn{width:100%;padding:14px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.5px}
+.auth-btn:hover{background:var(--accent-dark);box-shadow:0 4px 20px var(--glow)}
+.auth-btn:active{transform:scale(.98)}
+.auth-btn:disabled{opacity:.5;cursor:not-allowed}
+.auth-error{color:#FF453A;font-size:12px;margin-top:10px;font-weight:500;min-height:18px;transition:opacity .2s}
+.auth-secure{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:14px;font-size:10px;color:var(--text-dim);font-weight:500;opacity:.6}
+
+/* ===== Online Users ===== */
+.users-list{flex:1;overflow-y:auto;padding:4px;-webkit-overflow-scrolling:touch}
+.users-list::-webkit-scrollbar{width:4px}
+.users-list::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px}
+.user-item{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:2px;border-radius:10px;transition:all .2s;border:1px solid transparent}
+.user-item:hover{background:var(--surface2)}
+.user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-light));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.user-info{flex:1;min-width:0}
+.user-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-meta{font-size:9px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kick-btn{padding:4px 10px;border-radius:6px;border:1px solid rgba(255,69,58,.3);background:rgba(255,69,58,.1);color:#FF453A;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
+.kick-btn:hover{background:rgba(255,69,58,.2);border-color:rgba(255,69,58,.5)}
+.kick-btn:active{transform:scale(.97)}
+.users-empty{padding:24px 12px;text-align:center;color:var(--text-dim)}
+.users-empty-icon{font-size:28px;margin-bottom:6px;opacity:.5}
+.users-empty-text{font-size:12px;font-weight:500}
+
+/* ===== Mobile: single column with tabs ===== */
+.mobile-tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.mobile-tabs::-webkit-scrollbar{display:none}
+.mtab{flex:1;min-width:0;padding:10px 4px;text-align:center;font-size:10px;font-weight:600;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.mtab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.mtab-panels{flex:1;overflow:hidden;position:relative;min-height:0}
+.mtab-panel{position:absolute;inset:0;overflow-y:auto;display:none;flex-direction:column;-webkit-overflow-scrolling:touch}
+.mtab-panel.active{display:flex}
+
+/* Mobile-specific layout optimizations */
+@media(max-width:639px){
+  .header{padding:8px 10px}
+  .header h1{font-size:14px}
+  .status{font-size:10px}
+  .panel-header{padding:8px 10px}
+  .panel-header h2{font-size:10px}
+  .np-area{padding:6px 10px}
+  .np-card{padding:10px;border-radius:12px;max-width:none}
+  .np-cover{width:70px;height:70px;font-size:28px;border-radius:10px;margin-bottom:6px}
+  .np-title{font-size:14px;margin-bottom:1px}
+  .np-artist{font-size:10px;margin-bottom:8px}
+  .np-time{margin-bottom:8px;font-size:9px}
+  .transport{gap:8px}
+  .tbtn{width:34px;height:34px;font-size:12px;border-radius:50%}
+  .tbtn.play{width:44px;height:44px;font-size:14px}
+  .chat-input-area{padding:6px}
+  .chat-inp{padding:7px 8px;font-size:11px}
+  .chat-send{padding:7px 10px;font-size:11px}
+  .msg-text{font-size:11px;line-height:1.3}
+  .msg-name{font-size:10px}
+  .upload-area{padding:8px}
+  .url-inp{padding:6px 8px;font-size:10px}
+  .add-btn{padding:6px 10px;font-size:10px}
+  .dropzone{border-radius:8px}
+  .dz-label{padding:8px 6px}
+  .drop-icon{font-size:14px;margin-bottom:1px}
+  .drop-text{font-size:9px}
+  .track-item{padding:6px 8px;gap:4px}
+  .track-thumb-wrap{width:28px;height:28px;border-radius:5px}
+  .title{font-size:11px}
+  .artist{font-size:9px}
+  .dur{font-size:9px}
+  .sub-tab{padding:6px 0;font-size:10px}
+}
+
+/* ===== Responsive: Tablet portrait (>=640px) ===== */
+@media(min-width:640px){
+  .container{flex-direction:row}
+  .mobile-tabs{display:none}
+  .mtab-panels{position:static;display:flex;flex:1}
+  .mtab-panel{position:static;display:flex!important;flex-direction:column;flex:1;overflow:hidden}
+  .left{border-right:1px solid var(--border);flex:0 0 250px}
+  .right{border-left:1px solid var(--border);flex:0 0 250px}
+  .header h1{font-size:17px}
+  .np-cover{width:110px;height:110px;font-size:42px}
+  .np-card{max-width:380px;padding:16px}
+  .tbtn{width:44px;height:44px;font-size:16px}
+  .tbtn.play{width:54px;height:54px;font-size:18px}
+}
+
+/* ===== Responsive: Tablet landscape / small desktop (>=900px) ===== */
+@media(min-width:900px){
+  .left{flex:0 0 280px}
+  .right{flex:0 0 290px}
+  .np-cover{width:120px;height:120px;font-size:46px}
+  .np-card{max-width:400px;padding:18px}
+}
+
+/* ===== Responsive: Desktop (>=1200px) ===== */
+@media(min-width:1200px){
+  .left{flex:0 0 300px}
+  .right{flex:0 0 330px}
+  .header h1{font-size:18px}
+  .panel-header h2{font-size:12px}
+  .title{font-size:13px}
+  .artist{font-size:11px}
+  .np-cover{width:130px;height:130px;font-size:50px}
+  .np-card{max-width:420px;padding:20px}
+  .tbtn{width:48px;height:48px;font-size:17px}
+  .tbtn.play{width:58px;height:58px;font-size:20px}
+  .msg-text{font-size:13px}
+}
+
+/* ===== Responsive: Large desktop (>=1600px) ===== */
+@media(min-width:1600px){
+  .left{flex:0 0 340px}
+  .right{flex:0 0 380px}
+  .np-cover{width:150px;height:150px;font-size:56px}
+}
+</style>
+</head>
+<body>
+
+<!-- Auth Overlay -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card">
+    <div class="auth-icon">🎛️</div>
+    <div class="auth-title">Music Radio</div>
+    <div class="auth-subtitle">请输入主播台密码</div>
+    <div class="auth-input-wrap">
+      <span class="auth-input-icon">🔒</span>
+      <input type="password" class="auth-input" id="authPwd" placeholder="输入密码..." autocomplete="off" autofocus>
+    </div>
+    <button class="auth-btn" id="authBtn" onclick="doAuth()">验 证</button>
+    <div class="auth-error" id="authErr"></div>
+    <div class="auth-secure">🔒 SHA-256 加密传输</div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Mobile: tabs navigation -->
+  <div class="mobile-tabs">
+    <div class="mtab active" data-tab="playlist" onclick="switchTab('playlist')">📋 列表</div>
+    <div class="mtab" data-tab="nowplaying" onclick="switchTab('nowplaying')">🎛️ 控制</div>
+    <div class="mtab" data-tab="local" onclick="switchTab('local')">📁 本地</div>
+    <div class="mtab" data-tab="users" onclick="switchTab('users')">👥 在线</div>
+    <div class="mtab" data-tab="chat" onclick="switchTab('chat')">💬 聊天</div>
+  </div>
+
+  <!-- Left: Playlist -->
+  <div class="panel left mtab-panel active" data-panel="playlist">
+    <div class="header"><h1>🎛️ Music <span style="color:var(--accent)">Radio</span></h1><div class="status"><div class="dot" id="stDot"></div><span id="stTxt">离线</span></div></div>
+    <!-- Sub-tabs: 播放列表 / 本地音乐 -->
+    <div class="sub-tabs">
+      <div class="sub-tab active" data-sub="pl" onclick="switchSubTab('pl')">📋 播放列表</div>
+      <div class="sub-tab" data-sub="local" onclick="switchSubTab('local')">📁 本地音乐</div>
+    </div>
+    <!-- Playlist sub-view -->
+    <div id="subPl">
+      <div class="panel-header"><h2>📋 播放列表</h2><span class="badge" id="tcnt">0 首</span></div>
+      <div class="playlist" id="plist"></div>
+      <div class="upload-area">
+        <div class="url-row"><input class="url-inp" id="urlIn" placeholder="输入音视频 URL..." /><button class="add-btn" onclick="addUrl()">添加</button></div>
+        <div class="dropzone" id="dz">
+          <div class="dz-label">
+            <div class="drop-icon">📁</div>
+            <div class="drop-text"><strong>点击选择文件</strong><br>或拖拽音频/视频到此处</div>
+          </div>
+        </div>
+        <input type="file" id="fileInput" accept="audio/*,video/*" multiple />
+        <div class="upload-progress" id="upProgress"></div>
+      </div>
+    </div>
+    <!-- Local music sub-view -->
+    <div id="subLocal" style="display:none;flex:1;overflow:hidden;flex-direction:column;min-height:0">
+      <div class="local-breadcrumb" id="localBreadcrumb">
+        <span class="bc-item" onclick="browseLocal('')">🎵 音乐库</span>
+      </div>
+      <div class="local-list" id="localList">
+        <div class="local-empty"><div class="local-empty-icon">📁</div><div class="local-empty-text">点击目录浏览本地音乐</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Center: Now Playing -->
+  <div class="mtab-panels">
+    <div class="panel center mtab-panel" data-panel="nowplaying">
+      <div class="header"><h1>🎛️ Music <span style="color:var(--accent)">Radio</span></h1><div class="status"><div class="dot" id="stDot2"></div><span id="stTxt2">离线</span></div></div>
+      <div class="np-area">
+        <div class="np-card">
+          <div class="np-cover" id="npCover">🎵</div>
+          <div class="np-title" id="npTitle">未播放</div>
+          <div class="np-artist" id="npArtist">—</div>
+          <div class="np-progress" onclick="seekAdmin(event)"><div class="np-fill" id="npFill"></div></div>
+          <div class="np-time"><span id="npCur">0:00</span><span id="npDur">/ 0:00</span></div>
+          <div class="transport">
+            <button class="tbtn" onclick="prevTrack()">⏮</button>
+            <button class="tbtn play" id="playBtn" onclick="togglePlay()">▶</button>
+            <button class="tbtn" onclick="nextTrack()">⏭</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Online Users -->
+    <div class="panel right mtab-panel" data-panel="users">
+      <div class="panel-header"><h2>👥 在线听众</h2><span class="badge" id="ucnt2">0 人</span></div>
+      <div class="users-list" id="usersList">
+        <div class="users-empty"><div class="users-empty-icon">👥</div><div class="users-empty-text">暂无在线听众</div></div>
+      </div>
+    </div>
+
+    <!-- Right: Chat -->
+    <div class="panel right mtab-panel" data-panel="chat">
+      <div class="panel-header"><h2>💬 实时聊天</h2><span class="badge" id="ucnt">0 在线</span></div>
+      <div class="chat-area">
+        <div class="chat-messages" id="chatMsgs">
+          <div class="msg system">连接中...</div>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <div class="chat-form">
+          <input class="chat-inp" id="chatInp" placeholder="发送消息..." />
+          <button class="chat-send" onclick="sendChat()">发送</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<script>
+// ===== Admin Authentication =====
+let adminAuthenticated = false;
+
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function doAuth() {
+  const pwd = document.getElementById('authPwd').value;
+  const errEl = document.getElementById('authErr');
+  const btn = document.getElementById('authBtn');
+  if (!pwd) { errEl.textContent = '请输入密码'; return; }
+  
+  btn.disabled = true;
+  btn.textContent = '验证中...';
+  errEl.textContent = '';
+  
+  try {
+    const hash = await sha256(pwd);
+    const r = await fetch('/api/admin/auth', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password_hash: hash})
+    });
+    const data = await r.json();
+    
+    if (data.success) {
+      adminAuthenticated = true;
+      sessionStorage.setItem('admin_auth', data.token);
+      document.getElementById('authOverlay').classList.add('hidden');
+      initApp();
+    } else {
+      errEl.textContent = '密码错误';
+      btn.disabled = false;
+      btn.textContent = '验 证';
+    }
+  } catch(e) {
+    if (e.message && e.message.includes('401')) {
+      errEl.textContent = '密码错误';
+    } else {
+      errEl.textContent = '网络错误，请重试';
+    }
+    btn.disabled = false;
+    btn.textContent = '验 证';
+  }
+}
+
+async function checkExistingAuth() {
+  const token = sessionStorage.getItem('admin_auth');
+  if (!token) return false;
+  try {
+    const r = await fetch('/api/admin/verify?token=' + encodeURIComponent(token));
+    const d = await r.json();
+    return d.valid === true;
+  } catch(e) { return false; }
+}
+
+// Enter key to submit
+document.getElementById('authPwd').addEventListener('keydown', e => { if (e.key === 'Enter') doAuth(); });
+
+const $ = id => document.getElementById(id);
+let ws = null;
+let wsConnected = false;
+let playlist = [];
+let listenersCount = 0;
+let isPlaying = false;
+let currentTrack = null;
+let currentPosition = 0;
+let myUid = ''; // 自己的uid，在线列表中隐藏
+
+// ===== Local Music Browser =====
+let localCurrentPath = '';
+let localAddedPaths = new Set(); // 记录已添加的文件路径
+
+function switchSubTab(sub) {
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.toggle('active', t.dataset.sub === sub));
+  $('subPl').style.display = sub === 'pl' ? '' : 'none';
+  const localEl = $('subLocal');
+  if (sub === 'local') {
+    localEl.style.display = 'flex';
+    if (!localCurrentPath) browseLocal('');
+  } else {
+    localEl.style.display = 'none';
+  }
+}
+
+async function browseLocal(path) {
+  localCurrentPath = path;
+  try {
+    const r = await apiGet('/api/local-music/browse?path=' + encodeURIComponent(path));
+    renderLocalBrowser(r);
+  } catch(e) {
+    $('localList').innerHTML = '<div class="local-empty"><div class="local-empty-icon">⚠️</div><div class="local-empty-text">无法访问本地音乐目录</div></div>';
+    console.error('browseLocal:', e);
+  }
+}
+
+function renderLocalBrowser(data) {
+  // 渲染面包屑
+  const bc = $('localBreadcrumb');
+  const parts = data.current_path ? data.current_path.split('/') : [];
+  let bcHtml = '<span class="bc-item" onclick="browseLocal(\'\')">🎵 音乐库</span>';
+  let cumPath = '';
+  for (let i = 0; i < parts.length; i++) {
+    cumPath += (i > 0 ? '/' : '') + parts[i];
+    const p = cumPath;
+    if (i < parts.length - 1) {
+      bcHtml += '<span class="bc-sep">›</span><span class="bc-item" onclick="browseLocal(\'' + escAttr(p) + '\')">' + esc(parts[i]) + '</span>';
+    } else {
+      bcHtml += '<span class="bc-sep">›</span><span class="bc-current">' + esc(parts[i]) + '</span>';
+    }
+  }
+  bc.innerHTML = bcHtml;
+
+  // 渲染文件列表
+  const list = $('localList');
+  let html = '';
+
+  // 返回上级
+  if (parts.length > 0) {
+    const parentPath = parts.slice(0, -1).join('/');
+    html += '<div class="local-dir" onclick="browseLocal(\'' + escAttr(parentPath) + '\')"><span class="local-dir-icon">⬆️</span><span class="local-dir-name">返回上级</span></div>';
+  }
+
+  // 子目录
+  for (const d of (data.dirs || [])) {
+    html += '<div class="local-dir" onclick="browseLocal(\'' + escAttr(d.path) + '\')"><span class="local-dir-icon">📁</span><span class="local-dir-name">' + esc(d.name) + '</span><span class="local-dir-count">' + d.count + ' 首</span></div>';
+  }
+
+  // 音频文件
+  for (const f of (data.files || [])) {
+    const added = localAddedPaths.has(f.path);
+    html += '<div class="local-file"><span class="local-file-icon">🎵</span><div class="local-file-info"><div class="local-file-name">' + esc(f.name) + '</div><div class="local-file-size">' + formatSize(f.size) + '</div></div><button class="local-add-btn' + (added ? ' added' : '') + '" onclick="addLocalFile(\'' + escAttr(f.path) + '\', this)">' + (added ? '✓ 已添加' : '+ 添加') + '</button></div>';
+  }
+
+  if (!data.dirs?.length && !data.files?.length && parts.length === 0) {
+    html = '<div class="local-empty"><div class="local-empty-icon">📁</div><div class="local-empty-text">本地音乐目录为空</div></div>';
+  } else if (!data.dirs?.length && !data.files?.length) {
+    html += '<div class="local-empty"><div class="local-empty-icon">🎵</div><div class="local-empty-text">此目录无音频文件</div></div>';
+  }
+
+  list.innerHTML = html;
+}
+
+async function addLocalFile(path, btn) {
+  if (localAddedPaths.has(path)) return;
+  btn.textContent = '添加中...';
+  btn.disabled = true;
+  try {
+    const r = await apiPost('/api/local-music/add', {path: path});
+    if (r.success) {
+      localAddedPaths.add(path);
+      btn.textContent = '✓ 已添加';
+      btn.classList.add('added');
+      // playlist 会被 WS playlist_update 自动更新，不需要手动 push
+      toast('已添加: ' + r.track.title);
+    } else {
+      btn.textContent = '+ 添加';
+      btn.disabled = false;
+      toast('添加失败');
+    }
+  } catch(e) {
+    btn.textContent = '+ 添加';
+    btn.disabled = false;
+    toast('添加失败: ' + e.message);
+  }
+}
+
+function escAttr(s) {
+  return s.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// ===== Online Users =====
+let usersRefreshTimer = null;
+
+async function loadUsers(){
+  try{
+    const r = await apiGet('/api/users');
+    renderUsers(r.users || []);
+  }catch(e){ console.error('loadUsers:', e); }
+}
+
+function renderUsers(users){
+  // 过滤掉自己（主播），只显示其他听众
+  const otherUsers = users.filter(u => u.uid !== myUid);
+  const el = $('usersList');
+  $('ucnt2').textContent = otherUsers.length + ' 人';
+  if(!otherUsers.length){
+    el.innerHTML = '<div class="users-empty"><div class="users-empty-icon">👥</div><div class="users-empty-text">暂无在线听众</div></div>';
+    return;
+  }
+  el.innerHTML = otherUsers.map(u => {
+    const initial = (u.username || '?')[0].toUpperCase();
+    const durStr = u.duration != null ? fmtDuration(u.duration) : '';
+    return `<div class="user-item">
+      <div class="user-avatar">${esc(initial)}</div>
+      <div class="user-info">
+        <div class="user-name">${esc(u.username || '匿名听众')}</div>
+        <div class="user-meta">${esc(u.ip || '')}${durStr ? ' · ' + durStr : ''}</div>
+      </div>
+      <button class="kick-btn" onclick="kickUser('${u.uid}','${esc(u.username || '匿名')}')">踢出</button>
+    </div>`;
+  }).join('');
+}
+
+async function kickUser(uid, name){
+  if(!confirm('确定要踢出 ' + name + ' 吗？')) return;
+  try{
+    await apiPost('/api/users/kick', {uid: uid});
+    toast('已踢出: ' + name);
+    loadUsers();
+  }catch(e){ toast('踢出失败: ' + e.message); }
+}
+
+function fmtDuration(sec){
+  if(!sec || sec < 0) return '';
+  if(sec < 60) return sec + '秒';
+  if(sec < 3600) return Math.floor(sec/60) + '分钟';
+  return Math.floor(sec/3600) + '小时' + Math.floor((sec%3600)/60) + '分';
+}
+
+function startUsersRefresh(){
+  if(usersRefreshTimer) clearInterval(usersRefreshTimer);
+  loadUsers();
+  usersRefreshTimer = setInterval(loadUsers, 5000);
+}
+
+// ===== Mobile Tab Switching =====
+function switchTab(name){
+  document.querySelectorAll('.mtab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.mtab-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === name));
+
+  // 移动端：确保 .mtab-panels 容器和左侧 panel 的显隐正确
+  const isMobile = window.innerWidth < 640;
+  if(isMobile){
+    const leftPanel = document.querySelector('.panel.left.mtab-panel');
+    const mtabPanels = document.querySelector('.mtab-panels');
+    const showLeft = (name === 'playlist' || name === 'local');
+    if(leftPanel) leftPanel.style.display = showLeft ? 'flex' : 'none';
+    if(mtabPanels) mtabPanels.style.display = showLeft ? 'none' : 'flex';
+
+    // "本地" tab 时自动切换到 local sub-tab
+    if(name === 'local') switchSubTab('local');
+    if(name === 'playlist') switchSubTab('pl');
+  }
+}
+
+// 窗口大小变化时重置内联样式
+window.addEventListener('resize', () => {
+  const leftPanel = document.querySelector('.panel.left.mtab-panel');
+  const mtabPanels = document.querySelector('.mtab-panels');
+  if(leftPanel) leftPanel.style.display = '';
+  if(mtabPanels) mtabPanels.style.display = '';
+});
+
+// ===== Seek on progress bar =====
+function seekAdmin(e){
+  if(!currentTrack || !currentTrack.duration) return;
+  const bar = e.currentTarget;
+  const rect = bar.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const pos = pct * currentTrack.duration;
+  // 本地即时更新进度条视觉
+  currentPosition = pos;
+  updateNowPlaying();
+  fetch('/api/playback/seek', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({position:pos})});
+}
+
+// API
+async function apiPost(url, body){
+  const h = {'Content-Type': 'application/json'};
+  const r = await fetch(url, {method: 'POST', headers: h, body: JSON.stringify(body)});
+  return r.json();
+}
+
+async function apiGet(url){
+  const r = await fetch(url, {method: 'GET'});
+  return r.json();
+}
+
+// Playlist
+async function loadPlaylist(){
+  try{
+    const d = await apiPost('/api/playlist/list');
+    playlist = d.tracks || [];
+  }catch(e){console.error('loadPlaylist:', e)}
+  try{
+    const s = await apiGet('/api/status');
+    listenersCount = s.listeners || 0;
+    $('ucnt').textContent = listenersCount + ' 在线';
+    if(s.current_track){
+      currentTrack = s.current_track;
+      isPlaying = s.is_playing;
+      currentPosition = s.position;
+      updateNowPlaying();
+    }
+  }catch(e){}
+  renderPl();
+}
+
+function renderPl(){
+  const el = $('plist');
+  $('tcnt').textContent = playlist.length + ' 首';
+  if(!playlist.length){
+    el.innerHTML = '<div style="padding:24px 12px;text-align:center;color:var(--text-dim)"><div style="font-size:28px;margin-bottom:4px">🎶</div><div><strong>播放列表为空</strong><br><small>在下方添加 URL、上传文件或从本地音乐库选择</small></div></div>';
+    return;
+  }
+  // 同步 localAddedPaths
+  playlist.forEach(t => { if(t.source_type === 'local' && t.local_path) localAddedPaths.add(t.local_path); });
+  
+  el.innerHTML = playlist.map((t, i) => {
+    const coverHtml = t.cover 
+      ? `<img src="${t.cover}" class="track-thumb" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="track-thumb-placeholder" style="display:none">🎵</span>`
+      : `<span class="track-thumb-placeholder">🎵</span>`;
+    const srcTag = t.source_type === 'local' ? '<span class="source-tag local">本地</span>' : t.source_type === 'url' ? '<span class="source-tag url">URL</span>' : '<span class="source-tag upload">上传</span>';
+    return `<div class="track-item${currentTrack && currentTrack.id === t.id ? ' active' : ''}" data-id="${t.id}" data-index="${i}" draggable="true">
+    <span class="drag-handle" style="cursor:move;padding:0 4px;color:var(--text-dim);user-select:none">☰</span>
+    <span class="idx">${String(i + 1).padStart(2, '0')}</span>
+    <div class="track-thumb-wrap">${coverHtml}</div>
+    <div class="info"><div class="title">${esc(t.title)}${srcTag}</div><div class="artist">${esc(t.artist || '—')}</div></div>
+    <span class="dur">${t.duration ? fmt(t.duration) : '--:--'}</span>
+    <div class="track-btns"><button class="tb tb-play" onclick="playTrack(${i})">▶</button><button class="tb tb-del" onclick="remTrack(${i})">×</button></div>
+  </div>`;
+  }).join('');
+}
+
+async function addUrl(){
+  const v = $('urlIn').value.trim();
+  if(!v) return toast('请输入URL');
+  $('urlIn').value = '';
+  try{
+    const r = await apiPost('/api/playlist/add', {url: v});
+    if(r.success){toast('已添加')}
+    else toast('添加失败: ' + (r.error || '?'));
+  }catch(e){toast('网络错误: ' + e.message)}
+}
+
+async function remTrack(i){
+  try{
+    const t = playlist[i];
+    if(!t) return;
+    // 从 localAddedPaths 中移除
+    if(t.source_type === 'local' && t.local_path) localAddedPaths.delete(t.local_path);
+    const r = await fetch(`/api/playlist/${t.id}`, {method: 'DELETE'});
+    const d = await r.json();
+    if(d.success && d.tracks){playlist = d.tracks; renderPl(); toast('已移除')}
+    else{ await loadPlaylist(); renderPl(); toast('已移除');}
+  }catch(e){}
+}
+
+// 拖拽排序功能
+function initDragAndDrop() {
+  const container = $('plist');
+  if (!container) return;
+  let draggedItem = null, dragOverItem = null;
+  container.addEventListener('dragstart', function(e) {
+    if (e.target.classList.contains('track-item') || e.target.closest('.track-item')) {
+      draggedItem = e.target.classList.contains('track-item') ? e.target : e.target.closest('.track-item');
+      draggedItem.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', draggedItem.dataset.id);
+    }
+  });
+  container.addEventListener('dragend', function(e) {
+    if (draggedItem) { draggedItem.classList.remove('dragging'); draggedItem = null; }
+    container.querySelectorAll('.track-item.drag-over').forEach(item => item.classList.remove('drag-over'));
+  });
+  container.addEventListener('dragover', function(e) {
+    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+    const targetItem = e.target.classList.contains('track-item') ? e.target : e.target.closest('.track-item');
+    if (targetItem && targetItem !== draggedItem) {
+      container.querySelectorAll('.track-item.drag-over').forEach(item => { if (item !== targetItem) item.classList.remove('drag-over'); });
+      targetItem.classList.add('drag-over'); dragOverItem = targetItem;
+    }
+  });
+  container.addEventListener('drop', async function(e) {
+    e.preventDefault();
+    if (!draggedItem || !dragOverItem || draggedItem === dragOverItem) { container.querySelectorAll('.track-item.drag-over').forEach(item => item.classList.remove('drag-over')); return; }
+    const draggedId = draggedItem.dataset.id, targetId = dragOverItem.dataset.id;
+    if (draggedId === targetId) { container.querySelectorAll('.track-item.drag-over').forEach(item => item.classList.remove('drag-over')); return; }
+    const currentOrder = playlist.map(track => track.id);
+    const draggedIndex = currentOrder.indexOf(draggedId), targetIndex = currentOrder.indexOf(targetId);
+    if (draggedIndex === -1 || targetIndex === -1) { container.querySelectorAll('.track-item.drag-over').forEach(item => item.classList.remove('drag-over')); return; }
+    const newOrder = [...currentOrder];
+    const [removed] = newOrder.splice(draggedIndex, 1);
+    newOrder.splice(targetIndex, 0, removed);
+    try {
+      const response = await fetch('/api/playlist/reorder', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({track_ids: newOrder})});
+      const result = await response.json();
+      if (result.playlist) { playlist = result.playlist; renderPl(); toast('播放列表顺序已更新'); }
+      else toast('排序失败');
+    } catch (error) { toast('排序失败: ' + error.message); }
+    container.querySelectorAll('.track-item.drag-over').forEach(item => item.classList.remove('drag-over'));
+  });
+}
+
+// Touch-based reorder for mobile
+function initTouchReorder(){
+  const container=$('plist');
+  if(!container) return;
+  let touchDragItem=null,touchOverItem=null,longPressTimer=null,isTouchDragging=false,touchStartY=0;
+  container.addEventListener('touchstart',function(e){
+    const item=e.target.closest('.track-item');
+    if(!item||e.target.closest('.track-btns')) return;
+    touchStartY=e.touches[0].clientY;
+    longPressTimer=setTimeout(()=>{
+      isTouchDragging=true;
+      touchDragItem=item;
+      item.classList.add('touch-dragging');
+      if(navigator.vibrate) navigator.vibrate(30);
+    },400);
+  },{passive:true});
+  container.addEventListener('touchmove',function(e){
+    if(!isTouchDragging){
+      if(longPressTimer&&Math.abs(e.touches[0].clientY-touchStartY)>10){
+        clearTimeout(longPressTimer);longPressTimer=null;
+      }
+      return;
+    }
+    e.preventDefault();
+    const touch=e.touches[0];
+    container.querySelectorAll('.track-item.touch-drag-over').forEach(el=>el.classList.remove('touch-drag-over'));
+    const elem=document.elementFromPoint(touch.clientX,touch.clientY);
+    const overItem=elem?elem.closest('.track-item'):null;
+    if(overItem&&overItem!==touchDragItem){
+      overItem.classList.add('touch-drag-over');
+      touchOverItem=overItem;
+    }else{
+      touchOverItem=null;
+    }
+  },{passive:false});
+  container.addEventListener('touchend',async function(){
+    clearTimeout(longPressTimer);longPressTimer=null;
+    if(!isTouchDragging) return;
+    isTouchDragging=false;
+    if(touchDragItem) touchDragItem.classList.remove('touch-dragging');
+    container.querySelectorAll('.track-item.touch-drag-over').forEach(el=>el.classList.remove('touch-drag-over'));
+    if(touchDragItem&&touchOverItem&&touchDragItem!==touchOverItem){
+      const dId=touchDragItem.dataset.id,tId=touchOverItem.dataset.id;
+      const cur=playlist.map(t=>t.id);
+      const di=cur.indexOf(dId),ti=cur.indexOf(tId);
+      if(di!==-1&&ti!==-1){
+        const nw=[...cur];const[rm]=nw.splice(di,1);nw.splice(ti,0,rm);
+        try{
+          const r=await fetch('/api/playlist/reorder',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({track_ids:nw})});
+          const d=await r.json();
+          if(d.playlist){playlist=d.playlist;renderPl();toast('顺序已更新');}
+        }catch(e){toast('排序失败');}
+      }
+    }
+    touchDragItem=null;touchOverItem=null;
+  });
+}
+
+// Touch seek on progress bar (drag to seek)
+function setupTouchSeek(){
+  const bar=document.querySelector('.np-progress');
+  if(!bar) return;
+  let seeking=false;
+  function doSeek(touch){
+    if(!currentTrack||!currentTrack.duration) return;
+    const rect=bar.getBoundingClientRect();
+    const pct=Math.max(0,Math.min(1,(touch.clientX-rect.left)/rect.width));
+    const pos=pct*currentTrack.duration;
+    // 本地即时更新进度条视觉
+    currentPosition = pos;
+    updateNowPlaying();
+    fetch('/api/playback/seek',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({position:pos})});
+  }
+  bar.addEventListener('touchstart',function(e){
+    seeking=true;doSeek(e.touches[0]);
+  },{passive:true});
+  bar.addEventListener('touchmove',function(e){
+    if(!seeking) return;
+    e.preventDefault();doSeek(e.touches[0]);
+  },{passive:false});
+  bar.addEventListener('touchend',function(){seeking=false;});
+}
+
+// Playback
+async function playTrack(index){
+  if(index < 0 || index >= playlist.length) return;
+  const t = playlist[index];
+  try{
+    await apiPost('/api/playback/play-index', {index: index, position: 0});
+    currentTrack = t; currentPosition = 0; isPlaying = true;
+    updateNowPlaying(); renderPl(); toast('正在播放: ' + t.title);
+  }catch(e){toast('播放失败: ' + e.message)}
+}
+
+async function togglePlay(){
+  try{
+    if(isPlaying){
+      await apiPost('/api/playback/pause', {}); isPlaying = false;
+      $('playBtn').classList.remove('on'); $('playBtn').textContent = '▶';
+    }else{
+      await apiPost('/api/playback/play', {}); isPlaying = true;
+      $('playBtn').classList.add('on'); $('playBtn').textContent = '❚❚';
+    }
+    updateStatus();
+  }catch(e){toast('操作失败: ' + e.message)}
+}
+
+async function nextTrack(){ try{ await apiPost('/api/playback/next', {}); }catch(e){toast('切换失败')} }
+async function prevTrack(){ try{ await apiPost('/api/playback/prev', {}); }catch(e){toast('切换失败')} }
+
+function updateNowPlaying(){
+  if(!currentTrack){
+    $('npCover').innerHTML = '🎵'; $('npTitle').textContent = '未播放'; $('npArtist').textContent = '—';
+    $('npCur').textContent = '0:00'; $('npDur').textContent = '/ 0:00'; $('npFill').style.width = '0%'; return;
+  }
+  $('npTitle').textContent = currentTrack.title;
+  $('npArtist').textContent = currentTrack.artist || '未知艺术家';
+  const coverEl = $('npCover');
+  if(currentTrack.cover) coverEl.innerHTML = `<img src="${currentTrack.cover}" alt="cover" onerror="this.parentNode.innerHTML='🎵'">`;
+  else coverEl.innerHTML = '🎵';
+  const dur = currentTrack.duration || 0;
+  const pct = dur > 0 ? (currentPosition / dur * 100) : 0;
+  $('npFill').style.width = pct + '%';
+  $('npCur').textContent = fmt(currentPosition);
+  $('npDur').textContent = '/ ' + fmt(dur);
+}
+
+function updateStatus(){
+  let dotClass, statusText;
+  if(!wsConnected){ dotClass = 'dot'; statusText = '连接断开'; }
+  else if(isPlaying){ dotClass = 'dot live'; statusText = `播放中 (${listenersCount})`; }
+  else { dotClass = 'dot connected'; statusText = '已连接'; }
+  $('stDot').className = dotClass; $('stTxt').textContent = statusText;
+  if($('stDot2')){$('stDot2').className = dotClass; $('stTxt2').textContent = statusText;}
+}
+
+// Chat
+function sendChat(){
+  const msg = $('chatInp').value.trim();
+  if(!msg) return;
+  $('chatInp').value = '';
+  try{ ws.send(JSON.stringify({type:'chat',username:'主播',message:msg,role:'admin'})); }catch(e){toast('发送失败')}
+}
+
+function addChatMsg(data){
+  const el = $('chatMsgs');
+  if(data.type === 'init'){ el.innerHTML = ''; return; }
+  const roleClass = data.role === 'admin' ? 'admin' : 'user';
+  const roleText = data.role === 'admin' ? '主播' : '听众';
+  el.innerHTML += `<div class="msg">
+    <div class="msg-avatar">${data.role === 'admin' ? '🎛️' : '🎧'}</div>
+    <div class="msg-content">
+      <div class="msg-header"><span class="msg-name">${esc(data.username)}</span><span class="msg-role ${roleClass}">${roleText}</span><span class="msg-time">${data.timestamp || ''}</span></div>
+      <div class="msg-text">${esc(data.message)}</div>
+    </div>
+  </div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// File Upload
+let _dragging = false;
+function setupDragDrop(){
+  const dz = $('dz');
+  ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => {e.preventDefault(); dz.classList.add('drag-over'); _dragging = true}));
+  ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => {e.preventDefault(); dz.classList.remove('drag-over'); _dragging = false}));
+  dz.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+  dz.addEventListener('click', e => { if(_dragging) return; $('fileInput').click(); });
+}
+
+async function handleFiles(files){
+  const valid = [];
+  for(const f of files){
+    const ext = f.name.split('.').pop().toLowerCase();
+    if(f.type.startsWith('audio/') || f.type.startsWith('video/') || ['mp3','wav','ogg','m4a','flac','aac','mp4','webm'].includes(ext)) valid.push(f);
+  }
+  if(!valid.length) return toast('无有效音频文件');
+  try{ await uploadFiles(valid); }catch(e){ toast('上传失败: ' + e.message) }
+}
+
+async function uploadFiles(files){ for(const f of files) await upOne(f); }
+
+function upOne(file){
+  return new Promise(resolve => {
+    const fd = new FormData(); fd.append('files', file);
+    const progWrap = $('upProgress'); progWrap.classList.add('show');
+    const itemId = 'up_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+    progWrap.insertAdjacentHTML('beforeend',
+      `<div class="up-item" id="${itemId}"><div class="up-fname">${esc(file.name)} <span style="color:var(--text-dim);font-weight:400">(${formatSize(file.size)})</span></div><div class="up-bar"><div class="up-bar-fill" id="${itemId}_bar"></div></div><div class="up-info"><span class="up-pct" id="${itemId}_pct">0%</span><span class="up-speed" id="${itemId}_spd">计算中...</span></div></div>`);
+    const xhr = new XMLHttpRequest(); let startTime = 0;
+    xhr.upload.onprogress = e => {
+      if(!e.lengthComputable) return; if(!startTime) startTime = e.timeStamp;
+      const pct = Math.round(e.loaded / e.total * 100);
+      const barEl = document.getElementById(itemId + '_bar'), pctEl = document.getElementById(itemId + '_pct'), spdEl = document.getElementById(itemId + '_spd');
+      if(barEl) barEl.style.width = pct + '%'; if(pctEl) pctEl.textContent = pct + '%';
+      if(spdEl){ const elapsed = (e.timeStamp - startTime) / 1000; if(elapsed > 0.1){ const avgSpeed = e.loaded / elapsed; spdEl.textContent = `${formatSize(avgSpeed)}/s · 剩余 ${formatTime((e.total - e.loaded) / avgSpeed)}`; } }
+    };
+    xhr.onload = () => {
+      const itemEl = document.getElementById(itemId);
+      if(itemEl){ const barEl = document.getElementById(itemId+'_bar'), pctEl = document.getElementById(itemId+'_pct'), spdEl = document.getElementById(itemId+'_spd'); if(barEl) barEl.style.width='100%'; if(pctEl) pctEl.textContent='100%'; if(spdEl) spdEl.textContent='完成 ✓'; setTimeout(()=>{ itemEl.style.transition='opacity .3s'; itemEl.style.opacity='0'; setTimeout(()=>{ itemEl.remove(); if(progWrap && !progWrap.querySelector('.up-item')) progWrap.classList.remove('show'); },300); },1200); }
+      if(xhr.status >= 200 && xhr.status < 300){ try{ const d = JSON.parse(xhr.responseText); if(d.tracks?.length > 0){ toast('上传成功: ' + file.name); } else toast('上传失败: 文件格式不支持'); }catch(x){ toast('上传失败: 响应解析错误'); } }
+      else{ try{ const err = JSON.parse(xhr.responseText); toast('上传失败: ' + (err.detail || xhr.status)); }catch(e){ toast('上传失败 HTTP ' + xhr.status); } }
+      resolve();
+    };
+    xhr.onerror = () => { toast('网络错误，上传失败'); resolve(); };
+    xhr.open('POST', '/api/upload/music'); xhr.send(fd);
+  });
+}
+
+function formatSize(bytes){ if(!bytes || bytes <= 0) return '0 B'; const units = ['B','KB','MB','GB']; let i = 0, size = bytes; while(size >= 1024 && i < units.length - 1){ size /= 1024; i++; } return size.toFixed(i === 0 ? 0 : 1) + ' ' + units[i]; }
+function formatTime(sec){ if(!sec || sec <= 0 || !isFinite(sec)) return '--:--'; sec = Math.ceil(sec); if(sec < 60) return sec + '秒'; const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60; if(h > 0) return h+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); return m+':'+String(s).padStart(2,'0'); }
+
+// WebSocket
+function connectWS(){
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws`);
+  ws.onopen = () => { wsConnected = true; updateStatus(); ws.send(JSON.stringify({type: 'admin_auth', token: ''})); };
+  ws.onclose = () => { wsConnected = false; updateStatus(); setTimeout(connectWS, 2500); };
+  ws.onerror = () => { wsConnected = false; updateStatus(); ws.close(); };
+  ws.onmessage = e => { try{ handleWS(JSON.parse(e.data)); }catch(err){} };
+}
+
+function handleWS(d){
+  switch(d.type){
+    case 'init':
+      $('chatMsgs').innerHTML = '';
+      myUid = d.uid || '';
+      listenersCount = d.user_count || 0;
+      $('ucnt').textContent = listenersCount + ' 在线'; $('ucnt2').textContent = listenersCount + ' 人';
+      if(d.current_index >= 0 && d.playlist?.length > 0){
+        const t = d.playlist[d.current_index];
+        if(t){ currentTrack = t; isPlaying = d.is_playing; currentPosition = d.position || 0; updateNowPlaying(); $('playBtn').className = 'tbtn play' + (isPlaying ? ' on' : ''); $('playBtn').textContent = isPlaying ? '❚❚' : '▶'; }
+      }
+      updateStatus(); loadUsers(); break;
+    case 'admin_auth_ok': break;
+    case 'user_count':
+      listenersCount = d.count; $('ucnt').textContent = d.count + ' 在线'; $('ucnt2').textContent = d.count + ' 人';
+      updateStatus(); loadUsers(); break;
+    case 'now_playing':
+      currentTrack = d.track; isPlaying = d.is_playing; currentPosition = d.position;
+      updateNowPlaying(); renderPl();
+      $('playBtn').className = 'tbtn play' + (isPlaying ? ' on' : ''); $('playBtn').textContent = isPlaying ? '❚❚' : '▶'; break;
+    case 'position_update':
+      if(currentTrack && d.track_id === currentTrack.id){ currentPosition = d.position; updateNowPlaying(); } break;
+    case 'playlist_update':
+      playlist = d.playlist || []; renderPl(); break;
+    case 'chat':
+      addChatMsg(d); break;
+  }
+}
+
+// Utils
+function fmt(s){ if(!s || isNaN(s)) return '0:00'; return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2, '0'); }
+function esc(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+let _tt = null;
+function toast(msg){ const el = $('toastEl'); clearTimeout(_tt); el.textContent = msg; el.classList.add('show'); _tt = setTimeout(() => el.classList.remove('show'), 2000); }
+
+// Init — check auth first
+console.log('[MR] Admin page loaded');
+
+async function boot() {
+  const isAuthed = await checkExistingAuth();
+  if (isAuthed) {
+    adminAuthenticated = true;
+    document.getElementById('authOverlay').classList.add('hidden');
+    initApp();
+  }
+  // else: auth overlay stays visible, user must enter password
+}
+boot();
+
+function initApp() {
+  loadPlaylist();
+  connectWS();
+  setupDragDrop();
+  initDragAndDrop();
+  initTouchReorder();
+  setupTouchSeek();
+  startUsersRefresh();
+  // Mobile: set initial panel visibility
+  if(window.innerWidth<640){
+    const mp=document.querySelector('.mtab-panels');
+    if(mp) mp.style.display='none';
+  }
+  $('fileInput').addEventListener('change', e => { if(e.target.files.length) handleFiles(e.target.files); e.target.value = ''; });
+  $('chatInp').addEventListener('keydown', e => { if(e.key === 'Enter') sendChat(); });
+}
+</script>
+</body>
+</html>
